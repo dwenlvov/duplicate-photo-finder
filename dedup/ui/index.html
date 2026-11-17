@@ -1,0 +1,1367 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duplicate Photo Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --table:#E6EBEF; --mount:#FFFFFF; --ink:#17202B; --graphite:#5D6876; --rule:#C8D0D8;
+  --copy:#C2362F; --similar:#2D63A3; --exact:#17202B; --focus:#2D63A3;
+  --shadow:0 1px 0 rgba(23,32,43,.08), 0 6px 18px rgba(23,32,43,.07);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --table:#121518; --mount:#1D2227; --ink:#E7EBEF; --graphite:#9AA4B0; --rule:#2E353D;
+  --copy:#E5615A; --similar:#71A3DD; --exact:#E7EBEF; --focus:#71A3DD; --shadow:0 1px 0 rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  --table:#121518; --mount:#1D2227; --ink:#E7EBEF; --graphite:#9AA4B0; --rule:#2E353D;
+  --copy:#E5615A; --similar:#71A3DD; --exact:#E7EBEF; --focus:#71A3DD; --shadow:0 1px 0 rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{font-size:14px}
+body{margin:0;background:var(--table);color:var(--ink);font-family:"Golos Text",system-ui,-apple-system,sans-serif;
+  line-height:1.5;font-feature-settings:"tnum" 1}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 32px;padding:20px 24px 0;max-width:1320px;margin:0 auto}
+h1{font-size:1.375rem;font-weight:600;margin:0;letter-spacing:-.01em}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:0;padding:8px 12px;border-bottom:2px solid transparent;cursor:pointer;color:var(--graphite)}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+main{max-width:1320px;margin:0 auto;padding:16px 24px 64px}
+[hidden]{display:none!important}
+.lead{color:var(--graphite);max-width:68ch;margin:4px 0 20px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:1fr}.panel{position:static!important;max-height:none}}
+@media (max-width:600px){header,main{padding-left:16px;padding-right:16px}.slide{width:146px}.slide img{width:130px;height:98px}.group{padding:14px 10px 10px}}
+.drop{border:2px dashed var(--rule);border-radius:10px;padding:28px;text-align:center;background:color-mix(in srgb,var(--mount) 45%,transparent)}
+.drop.over{border-color:var(--similar)}
+.drop p{margin:0 0 12px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{background:var(--ink);color:var(--table);border:0;border-radius:6px;padding:9px 16px;cursor:pointer;font-weight:500}
+.btn.quiet{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+.btn:disabled{opacity:.45;cursor:default}
+.status{color:var(--graphite);min-height:1.5em;margin:12px 0}
+.summary{display:flex;flex-wrap:wrap;gap:8px 28px;margin:8px 0 24px}
+.summary b{font-size:1.75rem;font-weight:600;display:block;line-height:1.1}
+.summary span{color:var(--graphite);font-size:.875rem}
+h2{font-size:1.125rem;font-weight:600;margin:32px 0 12px}
+h3{font-size:1rem;font-weight:600;margin:20px 0 8px}
+.group{position:relative;padding:18px 22px 14px;margin:0 0 18px;width:fit-content;max-width:100%}
+.group,.pair{border:2px solid transparent;border-radius:10px}
+.group[data-kind="copy"],.pair[data-kind="copy"]{border-color:var(--copy)}
+.group[data-kind="rephoto"]{border-color:var(--copy);border-style:dashed}
+.group[data-kind="similar"],.pair[data-kind="similar"]{border-color:var(--similar);border-style:dashed}
+.group[data-kind="exact"],.pair[data-kind="exact"]{border-color:var(--exact)}
+.strip{display:flex;flex-wrap:wrap;gap:14px;position:relative}
+.slide{background:var(--mount);padding:8px 8px 6px;border-radius:3px;box-shadow:var(--shadow);width:156px}
+.slide img{display:block;width:140px;height:105px;object-fit:contain;background:var(--table)}
+.slide .cap{font-size:.8125rem;color:var(--graphite);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slide .tag{font-size:.75rem;color:var(--similar)}
+.why{font-size:.8125rem;color:var(--graphite);margin-top:10px;max-width:100%;overflow-x:auto}
+.cols>*,.lab>*{min-width:0}
+.why table{border-collapse:collapse}
+.why td{padding:2px 12px 2px 0;white-space:nowrap}
+.v-copy,.v-rephoto{color:var(--copy);font-weight:600}.v-similar{color:var(--similar);font-weight:600}.v-exact{font-weight:600}
+.panel{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;background:var(--mount);border-radius:10px;padding:18px;box-shadow:var(--shadow)}
+.panel h2{margin-top:0}
+.ctl{margin:0 0 14px}
+.ctl label{display:flex;justify-content:space-between;font-size:.875rem;gap:8px}
+.ctl label output{font-weight:600}
+.ctl small{display:block;color:var(--graphite);font-size:.8125rem;line-height:1.4;margin-top:2px}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:.875rem}
+.panel h3{font-size:.875rem;margin:18px 0 8px}
+.panel select{width:100%;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--table)}
+.hint{color:var(--graphite);font-size:.875rem}
+.near{font-size:.8125rem}
+.near td{padding:3px 10px 3px 0;vertical-align:middle}
+.near img{width:48px;height:36px;object-fit:cover;display:block}
+details summary{cursor:pointer;color:var(--graphite)}
+.lab{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start}
+@media (max-width:900px){.lab{grid-template-columns:1fr}}
+.labpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:220px;overflow:auto;padding:4px}
+.labpick button{padding:0;border:2px solid transparent;border-radius:3px;background:var(--mount);cursor:pointer}
+.labpick button[aria-pressed="true"]{border-color:var(--ink)}
+.labpick img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.pair{position:relative;display:flex;flex-wrap:wrap;gap:18px;padding:20px;margin:16px 0}
+.pair .slide{width:auto;max-width:100%}
+.pair .slide img{width:auto;max-width:min(380px,100%);height:260px}
+.verdict{font-size:2rem;font-weight:600;margin:4px 0 2px;line-height:1.15}
+.meter{margin:14px 0}
+.meter .lbl{display:flex;justify-content:space-between;font-size:.875rem}
+.bar{position:relative;height:8px;background:var(--rule);border-radius:4px;margin-top:6px}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--graphite)}
+.bar i.hit{background:var(--ink)}
+.bar b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--copy)}
+.meter small{color:var(--graphite);font-size:.8125rem}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.thumbs figure{margin:0;background:var(--mount);padding:5px;border-radius:3px;box-shadow:var(--shadow)}
+.thumbs img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.thumbs figcaption{font-size:.75rem;color:var(--graphite);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.t{border-collapse:collapse;font-size:.875rem;margin:8px 0 16px;width:100%;max-width:640px}
+table.t td,table.t th{text-align:left;padding:6px 12px 6px 0;border-bottom:1px solid var(--rule);font-weight:400}
+table.t th{color:var(--graphite)}
+.hbar{display:inline-block;height:8px;background:var(--ink);border-radius:4px;vertical-align:middle;margin-right:8px}
+.empty{color:var(--graphite);padding:24px 0}
+#labOut,#labPair{transition:opacity .15s}
+#labOut.busy,#labPair.busy{opacity:.55}
+.err{color:var(--copy)}
+.hright{margin-left:auto;display:flex;gap:16px;align-items:baseline}
+.langsw{display:inline-flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden;align-self:center}
+.langsw button{border:0;background:transparent;color:var(--graphite);font:inherit;font-size:.75rem;font-weight:600;padding:2px 8px;cursor:pointer}
+.langsw button+button{border-left:1px solid var(--rule)}
+.langsw button[aria-pressed="true"]{background:var(--ink);color:var(--mount)}
+
+/* presets: saved sets of settings, edited in place */
+.preset{padding-bottom:14px;border-bottom:1px solid var(--rule);margin-bottom:12px}
+.preset > label{font-weight:600;font-size:1.0714rem}
+.preset select{font-weight:500;margin-top:4px}
+.note{color:var(--graphite);font-size:.8125rem;line-height:1.4;margin:8px 0 0}
+.dirty{margin-top:10px;padding:10px;border-radius:8px;background:var(--table);font-size:.8125rem}
+.dirty .row{gap:8px;margin-top:8px}
+.dirty .btn{padding:6px 12px;font-size:.8125rem}
+.saveas{display:grid;gap:4px;margin-top:10px;font-size:.8125rem}
+.saveas input,.pathrow input{padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--table)}
+.saveas .row{margin-top:6px;gap:10px}
+.psum{margin:0 0 16px;padding-left:18px;font-size:.875rem;line-height:1.5}
+.psum li{margin:2px 0}
+.profiles{display:grid;grid-template-columns:260px minmax(0,1fr);gap:24px;align-items:start;max-width:1040px}
+@media (max-width:800px){.profiles{grid-template-columns:1fr}}
+.plist{display:grid;gap:8px;position:sticky;top:16px}
+.pcard{display:grid;gap:3px;text-align:left;background:var(--mount);border:2px solid transparent;border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink);font:inherit;box-shadow:var(--shadow)}
+.pcard[aria-pressed="true"]{border-color:var(--ink)}
+.pcard b{font-size:1rem}
+.pcard small{color:var(--graphite);font-size:.8125rem;line-height:1.35}
+.pcard .pact{justify-self:start;font-size:.75rem;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--ink);color:var(--mount)}
+.pcard .pmod{color:var(--similar)}
+.peditor{background:var(--mount);border-radius:10px;padding:20px 22px 0;box-shadow:var(--shadow)}
+.peditor fieldset{border:0;border-top:1px solid var(--rule);margin:0;padding:14px 0 4px}
+.peditor legend{font-weight:600;padding:0 8px 0 0}
+.peditor .pmeta{display:grid;grid-template-columns:1fr 1.6fr;gap:0 16px}
+@media (max-width:600px){.peditor .pmeta{grid-template-columns:1fr}}
+.peditor .pmeta .note{grid-column:1/-1;margin:0 0 12px}
+.peditor input[type=text],.peditor select{width:100%;padding:7px 9px;border:1px solid var(--rule);border-radius:6px;background:var(--table);color:var(--ink);font:inherit}
+.peditor input[readonly]{color:var(--graphite)}
+.peditor .ctl label{justify-content:flex-start}
+.peditor .ctl:has(input[type=range]) label{justify-content:space-between}
+.fine{border-top:1px solid var(--rule);padding:12px 0}
+.fine summary{font-weight:600;cursor:pointer}
+.pbar{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 -22px;padding:12px 22px;background:var(--mount);border-top:1px solid var(--rule);border-radius:0 0 10px 10px}
+.pbar .pstate{font-size:.875rem;color:var(--graphite);margin-right:auto}
+.pbar .pstate.dirty{color:var(--copy);font-weight:600}
+.pbar .btn[disabled]{opacity:.45;cursor:default}
+.pathrow{margin:18px auto 0;max-width:560px;text-align:left;font-size:.875rem;color:var(--graphite)}
+.pathrow .row{flex-wrap:nowrap;gap:8px;margin-top:6px}
+.pathrow input{flex:1 1 auto;min-width:0;color:var(--ink);font-size:.9375rem;padding:8px 10px;background:var(--mount)}
+.drop.compact .pathrow{margin:0;flex:1 1 100%;max-width:none}
+.drop.compact .pathrow label{display:none}
+.tidy{position:sticky;bottom:12px;z-index:3;border:1px solid var(--rule);background:var(--mount);border-radius:10px;padding:12px 16px;margin:24px 0 8px;box-shadow:0 6px 24px rgba(23,32,43,.16)}
+.tidyrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.tidy .tidysum{margin:0;font-weight:500;max-width:70ch}
+.tidy .row{gap:10px;align-items:center}
+.tidy .done,.tidy .err{font-size:.875rem;margin:8px 0 0}
+.tidy .done{color:var(--graphite)}
+.pick{display:flex;margin-top:6px;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.pick button{flex:1;border:0;background:transparent;color:var(--graphite);font:inherit;font-size:.8125rem;padding:5px 0;cursor:pointer}
+.pick button+button{border-left:1px solid var(--rule)}
+.pick button[data-v="keep"][aria-pressed="true"]{background:var(--ink);color:var(--mount);font-weight:600}
+.pick button[data-v="remove"][aria-pressed="true"]{background:var(--copy);color:#fff;font-weight:600}
+.slide.out img{opacity:.4;filter:grayscale(.6)}
+.slide.out .cap:first-of-type{text-decoration:line-through;color:var(--graphite)}
+.group[data-kind="old"]{border-color:var(--copy);border-style:dotted}
+.files{font-size:.8125rem;margin:8px 0 0;padding:0;list-style:none}
+.files li{overflow-wrap:anywhere}
+.files .keep{font-weight:600}
+.files .out{color:var(--graphite)}
+.viewer .keepbtn{margin-top:6px;font-size:.8125rem;padding:4px 10px}
+.drop.compact{padding:12px 16px;text-align:left;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.drop.compact p{margin:0;flex:1 1 220px}
+.answer{font-size:1.1875rem;line-height:1.4;font-weight:500;max-width:62ch;margin:18px 0 4px}
+.answer em{font-style:normal;color:var(--copy)}
+.meta{color:var(--graphite);font-size:.875rem;margin:0 0 14px}
+.jump{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:8px;padding:10px 0;background:var(--table)}
+.jump button{display:inline-flex;gap:6px;align-items:baseline;padding:5px 12px;border-radius:999px;border:1px solid var(--rule);background:var(--mount);color:var(--ink);font:inherit;font-size:.875rem;cursor:pointer}
+.jump button b{font-weight:600}
+.jump button.hot{border-color:var(--copy);color:var(--copy)}
+.jump button:hover{border-color:var(--ink)}
+.jump button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--mount)}
+.jump button.hot[aria-pressed="true"]{background:var(--copy);border-color:var(--copy)}
+.jump .jhint{align-self:center;font-size:.8125rem;color:var(--graphite)}
+section.rs{scroll-margin-top:70px}
+h2.sec{display:flex;align-items:baseline;gap:10px;scroll-margin-top:120px}
+h2.sec small{font-size:.875rem;font-weight:400;color:var(--graphite)}
+.card{background:color-mix(in srgb,var(--mount) 55%,transparent);padding:14px 16px 12px}
+.card .strip{gap:12px}
+.slide{position:relative;cursor:zoom-in}
+.slide .badge{position:absolute;top:12px;left:12px;font-size:.75rem;font-weight:600;padding:2px 7px;border-radius:999px;background:var(--copy);color:#fff}
+.slide .badge.keep{background:var(--ink);color:var(--mount)}
+.slide .tag{font-size:.75rem;color:var(--copy);font-weight:500}
+.reason{margin:10px 0 0;font-size:.9375rem}
+.reason .v-copy,.reason .v-similar,.reason .v-exact,.reason .v-rephoto{margin-right:6px}
+.cardfoot{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;margin-top:6px;font-size:.8125rem}
+.linkbtn{background:none;border:0;padding:0;color:var(--similar);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.cardfoot details{width:100%}
+.cardfoot details summary{display:inline;color:var(--similar);text-decoration:underline;text-underline-offset:3px}
+.more{font-size:.875rem;color:var(--graphite)}
+.more summary{margin:4px 0}
+.namelist{columns:2 260px;font-size:.8125rem;color:var(--graphite);margin:6px 0 0;padding-left:18px}
+dialog.viewer{border:0;border-radius:12px;padding:0;max-width:min(1200px,96vw);width:96vw;background:var(--mount);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog.viewer::backdrop{background:rgba(18,21,24,.72)}
+.viewer header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;max-width:none;margin:0;border-bottom:1px solid var(--rule)}
+.viewer .big{display:flex;gap:16px;overflow-x:auto;padding:16px;scroll-snap-type:x mandatory}
+.viewer figure{margin:0;flex:0 0 auto;scroll-snap-align:start}
+.viewer img{display:block;height:min(58vh,520px);width:auto;max-width:calc((96vw - 64px) / 2);object-fit:contain;background:var(--table)}
+@media (max-width:700px){.viewer img{max-width:86vw;height:auto;max-height:60vh}}
+.viewer figcaption{font-size:.8125rem;color:var(--graphite);margin-top:6px;max-width:calc((96vw - 64px) / 2);overflow-wrap:anywhere}
+@media (max-width:600px){.answer{font-size:1.0714rem}.pathrow .row{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Duplicate Photo Finder</h1>
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-tab="check">Проверка пачки</button>
+    <button role="tab" aria-selected="false" data-tab="profiles">Профили</button>
+    <button role="tab" aria-selected="false" data-tab="lab">Лаборатория</button>
+    <button role="tab" aria-selected="false" data-tab="history">История</button>
+    <button role="tab" aria-selected="false" data-tab="tests">Результаты тестов</button>
+  </nav>
+  <div class="hright">
+    <span class="langsw" role="group" aria-label="Язык"><button type="button" data-lang="ru" lang="ru">RU</button><button type="button" data-lang="en" lang="en">EN</button></span>
+    <button type="button" class="linkbtn" id="quitApp" title="Остановить программу на этом компьютере">Выключить</button>
+  </div>
+</header>
+<main>
+
+<section id="tab-check">
+  <div class="cols">
+    <div>
+      <div class="drop" id="drop">
+        <p id="dropText">Перетащите сюда фото или целую папку</p>
+        <div class="row" id="dropRow" style="justify-content:center">
+          <label class="btn quiet" for="files">Выбрать файлы</label>
+          <input id="files" type="file" accept="image/*,.heic,.heif" multiple hidden>
+          <button class="btn quiet" type="button" id="pickDir">Выбрать папку</button>
+          <input id="folder" type="file" webkitdirectory multiple hidden>
+        </div>
+        <form class="pathrow" id="pathForm">
+          <label for="dirPath">Или впишите путь к папке на этом компьютере. Только так можно выбрать, какие фото оставить, и перенести остальные. Для большого архива это ещё и быстрее: фото не копируются в браузер</label>
+          <div class="row"><input id="dirPath" type="text" placeholder="/Users/имя/Pictures/Архив" autocomplete="off" spellcheck="false">
+          <button class="btn" type="submit" id="pathGo" hidden>Проверить эту папку</button></div>
+        </form>
+      </div>
+      <div class="status" id="status" role="status"></div>
+      <div id="result"></div>
+    </div>
+    <aside class="panel" aria-label="Профиль проверки">
+      <div class="ctl preset"><label for="preset">Профиль проверки</label>
+        <select id="preset"></select>
+        <p class="note" id="presetNote"></p>
+      </div>
+      <h3>Что делает этот профиль</h3>
+      <ul class="psum" id="presetSum"></ul>
+      <button class="btn quiet" id="goProfiles" type="button">Настроить профили</button>
+    </aside>
+  </div>
+  <dialog class="viewer" id="viewer" aria-label="Крупный просмотр">
+    <header><b id="viewerTitle"></b><button class="btn quiet" id="viewerClose">Закрыть</button></header>
+    <div class="big" id="viewerBody"></div>
+  </dialog>
+</section>
+
+<section id="tab-profiles" hidden>
+  <p class="lead">Профиль — это набор настроек проверки. Выберите профиль в списке, измените настройки и нажмите «Сохранить». Проверка идёт по профилю с пометкой «используется».</p>
+  <div class="profiles">
+    <div class="plist" id="plist" aria-label="Профили"></div>
+    <form class="peditor" id="peditor" autocomplete="off">
+      <div class="pmeta">
+        <div class="ctl"><label for="e-name">Название</label><input id="e-name" type="text" maxlength="40" required></div>
+        <div class="ctl"><label for="e-note">Для чего, коротко</label><input id="e-note" type="text" maxlength="200"></div>
+        <p class="note" id="e-builtin" hidden>Это встроенный профиль: название и описание у него постоянные, настройки можно менять.</p>
+      </div>
+        <fieldset><legend>Сравнение</legend>
+          <div class="ctl"><label for="e-days">Сравнивать с фото, проверенными</label>
+            <select id="e-days"><option value="7">за последние 7 дней</option><option value="30">за 30 дней</option><option value="90">за 90 дней</option><option value="365">за год</option><option value="0">за всё время</option></select>
+            <small>Более старые фото в сравнении не участвуют</small></div>
+          <label class="check ctl"><input type="checkbox" id="e-keep"> <span>Запоминать проверенные фото<small>Тогда следующие проверки найдут повтор этих фото</small></span></label>
+        </fieldset>
+        <fieldset><legend>Что показывать</legend>
+          <label class="check ctl"><input type="checkbox" id="e-histSimilar"> <span>Показывать похожие среди старых фото<small>Похожее — это другой снимок того же места. Если выключить, из старых фото останутся только копии</small></span></label>
+          <label class="check ctl"><input type="checkbox" id="e-histStrong"> <span>Всё равно показывать старое фото, если совпало много деталей<small>Работает, когда похожие среди старых фото скрыты. Так видно старое фото, снятое с экрана вплотную. Иногда это честный снимок того же места. Сколько деталей нужно, задаётся в «Точной настройке»</small></span></label>
+          <label class="check ctl"><input type="checkbox" id="e-rephoto"> <span>Отмечать фото, которые, возможно, пересняты со старых<small>Если старое фото целиком видно в новом кадре, например на экране монитора, пара попадает в отдельный раздел</small></span></label>
+          <label class="check ctl"><input type="checkbox" id="e-exifRule"> <span>Серию снимков подряд не считать копиями<small>Серию видно по времени съёмки в файле или по тому, что в кадре что-то сдвинулось. Такие кадры попадают в «Похожие» с отметкой «серия»</small></span></label>
+        </fieldset>
+        <fieldset><legend>Подсказки и отметки</legend>
+          <label class="check ctl"><input type="checkbox" id="e-suggestKeep"> <span>Подсказывать, какой файл оставить<small>Обычно это самый крупный файл в группе. Для папки на компьютере появится кнопка, которая уберёт остальные в папку «_дубли»</small></span></label>
+          <div class="ctl"><label for="e-oldDays">Отмечать старые снимки</label>
+            <select id="e-oldDays"><option value="0">не отмечать</option><option value="1">снятые больше 1 дня назад</option><option value="3">снятые больше 3 дней назад</option><option value="7">снятые больше 7 дней назад</option><option value="30">снятые больше 30 дней назад</option></select>
+            <small>Смотрим дату съёмки, которую камера записывает в файл. Так часто видно старое фото, выданное за новое. Если дату стёрли, проверить нельзя</small></div>
+          <div class="ctl"><label for="e-dupDir">Куда переносить ненужные файлы</label><input id="e-dupDir" type="text" maxlength="60" spellcheck="false">
+            <small>Папка с этим именем создаётся внутри проверенной папки. Файлы в ней не удаляются, а при следующих проверках программа её пропускает</small></div>
+        </fieldset>
+        <details class="fine"><summary>Точная настройка</summary>
+          <p class="hint">Чем строже, тем меньше ложных копий, но больше пропущенных.</p>
+          <div id="e-sliders"></div>
+          <button class="btn quiet" id="e-reset" type="button">Вернуть пороги по умолчанию</button>
+        </details>
+      <div class="pbar" id="pbar"></div>
+    </form>
+  </div>
+</section>
+
+<section id="tab-lab" hidden>
+  <p class="lead">Выберите фото и испортите его. Справа видно, что заметил каждый метод и какое решение принято.</p>
+  <div class="lab">
+    <div>
+      <div class="labpick" id="pick"></div>
+      <div class="pair" id="labPair"></div>
+      <div id="labOut"></div>
+    </div>
+    <aside class="panel" aria-label="Изменения">
+      <h2>Что сделать с фото</h2>
+      <div id="labCtl"></div>
+      <label class="check ctl"><input type="checkbox" id="mirror"> Отразить зеркально</label>
+      <div class="ctl"><label for="text">Надпись поверх</label><input id="text" type="text" placeholder="например, Продаю" style="width:100%;padding:6px;border:1px solid var(--rule);border-radius:6px;background:var(--table)"></div>
+      <button class="btn quiet" id="labReset">Без изменений</button>
+    </aside>
+  </div>
+</section>
+
+<section id="tab-history" hidden>
+  <p class="lead">Отпечатки всех запомненных фото. С каждой новой пачкой сравниваются те, что попадают в срок «Сверять с историей за» на вкладке «Проверка пачки».</p>
+  <div id="hist"></div>
+</section>
+
+<section id="tab-tests" hidden>
+  <p class="lead">Прогоны на открытых наборах INRIA. Copydays — копии с правками, Holidays — одна сцена с разных точек.</p>
+  <div id="testsOut"></div>
+</section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const img = (p, side=320) => `/img?side=${side}&path=${encodeURIComponent(p)}`;
+
+/* ---------- language: Russian is the source text; EN maps a Russian string to its English version ---------- */
+// ?lang=en|ru in the address wins (not saved), then the saved choice, then the browser language
+let LANG = (() => {
+  const q = new URLSearchParams(location.search).get("lang");
+  if (q === "ru" || q === "en") return q;
+  let s = null; try { s = localStorage.getItem("lang"); } catch {}
+  if (s === "ru" || s === "en") return s;
+  return /^ru\b/i.test(navigator.language || "") ? "ru" : "en";
+})();
+const EN = {
+  // header, tabs, static page
+  "Язык": "Language",
+  "Проверка пачки": "Check a batch", "Профили": "Profiles", "Лаборатория": "Lab", "История": "History", "Результаты тестов": "Test results",
+  "Остановить программу на этом компьютере": "Stop the program on this computer", "Выключить": "Shut down",
+  "Перетащите сюда фото или целую папку": "Drop photos or a whole folder here", "Выбрать файлы": "Choose files", "Выбрать папку": "Choose folder",
+  "Или впишите путь к папке на этом компьютере. Только так можно выбрать, какие фото оставить, и перенести остальные. Для большого архива это ещё и быстрее: фото не копируются в браузер":
+    "Or type the path to a folder on this computer. Only then can you choose which photos to keep and move the rest. For a large archive it is also faster: photos are not copied into the browser",
+  "/Users/имя/Pictures/Архив": "/Users/name/Pictures/Archive", "C:\\Users\\имя\\Pictures\\Архив": "C:\\Users\\name\\Pictures\\Archive",
+  "Проверить эту папку": "Check this folder", "Проверить ещё раз": "Check again",
+  "Профиль проверки": "Profile for checks", "Что делает этот профиль": "What this profile does", "Настроить профили": "Set up profiles",
+  "Крупный просмотр": "Large view", "Закрыть": "Close",
+  // profiles screen
+  "Профиль — это набор настроек проверки. Выберите профиль в списке, измените настройки и нажмите «Сохранить». Проверка идёт по профилю с пометкой «используется».":
+    "A profile is a set of check settings. Pick a profile in the list, change its settings and click “Save”. Checks use the profile marked “in use”.",
+  "Название": "Name", "Для чего, коротко": "What it is for, briefly",
+  "Это встроенный профиль: название и описание у него постоянные, настройки можно менять.": "This is a built-in profile: its name and description are fixed, but its settings can be changed.",
+  "Сравнение": "Comparison", "Сравнивать с фото, проверенными": "Compare with photos checked",
+  "за последние 7 дней": "in the last 7 days", "за 30 дней": "in the last 30 days", "за 90 дней": "in the last 90 days", "за год": "in the last year", "за всё время": "at any time",
+  "Более старые фото в сравнении не участвуют": "Older photos are left out of the comparison",
+  "Запоминать проверенные фото": "Remember checked photos", "Тогда следующие проверки найдут повтор этих фото": "Then later checks will find repeats of these photos",
+  "Что показывать": "What to show",
+  "Показывать похожие среди старых фото": "Show similar photos among old ones",
+  "Похожее — это другой снимок того же места. Если выключить, из старых фото останутся только копии": "A similar photo is a different shot of the same place. If this is off, only copies are shown among old photos",
+  "Всё равно показывать старое фото, если совпало много деталей": "Still show an old photo if many details match",
+  "Работает, когда похожие среди старых фото скрыты. Так видно старое фото, снятое с экрана вплотную. Иногда это честный снимок того же места. Сколько деталей нужно, задаётся в «Точной настройке»":
+    "Works when similar old photos are hidden. This reveals an old photo shot close up from a screen. Sometimes it is an honest shot of the same place. How many details are needed is set in “Fine tuning”",
+  "Отмечать фото, которые, возможно, пересняты со старых": "Mark photos that may be re-shot from old ones",
+  "Если старое фото целиком видно в новом кадре, например на экране монитора, пара попадает в отдельный раздел": "If an old photo is fully visible in a new shot, for example on a monitor screen, the pair goes into a separate section",
+  "Серию снимков подряд не считать копиями": "Do not count a burst of shots as copies",
+  "Серию видно по времени съёмки в файле или по тому, что в кадре что-то сдвинулось. Такие кадры попадают в «Похожие» с отметкой «серия»":
+    "A burst shows in the capture time stored in the file, or in something that moved in the frame. Such shots go into “Similar” marked as a burst",
+  "Подсказки и отметки": "Hints and marks",
+  "Подсказывать, какой файл оставить": "Suggest which file to keep",
+  "Обычно это самый крупный файл в группе. Для папки на компьютере появится кнопка, которая уберёт остальные в папку «_дубли»":
+    "Usually the largest file in the group. For a folder on this computer, a button appears that moves the rest into the «_дубли» folder",
+  "Отмечать старые снимки": "Mark old shots", "не отмечать": "do not mark",
+  "снятые больше 1 дня назад": "taken more than 1 day ago", "снятые больше 3 дней назад": "taken more than 3 days ago",
+  "снятые больше 7 дней назад": "taken more than 7 days ago", "снятые больше 30 дней назад": "taken more than 30 days ago",
+  "Смотрим дату съёмки, которую камера записывает в файл. Так часто видно старое фото, выданное за новое. Если дату стёрли, проверить нельзя":
+    "Uses the capture date the camera writes into the file. This often reveals an old photo passed off as new. If the date was removed, it cannot be checked",
+  "Куда переносить ненужные файлы": "Where to move unneeded files",
+  "Папка с этим именем создаётся внутри проверенной папки. Файлы в ней не удаляются, а при следующих проверках программа её пропускает":
+    "A folder with this name is created inside the checked folder. Files in it are not deleted, and later checks skip it",
+  "Точная настройка": "Fine tuning", "Чем строже, тем меньше ложных копий, но больше пропущенных.": "Stricter means fewer false copies but more missed ones.",
+  "Вернуть пороги по умолчанию": "Reset thresholds to defaults",
+  "Сходство, при котором сразу копия": "Similarity that means a copy right away",
+  "Сходство двух фото от 0 до 1. Правее — строже": "Similarity of two photos, from 0 to 1. Further right is stricter",
+  "Сходство, при котором копия, если совпали детали": "Similarity that means a copy if details match",
+  "Фото чуть менее похожи, но на обоих нашлись одинаковые детали. Правее — строже": "The photos are a little less alike, but the same details were found on both. Further right is stricter",
+  "Допустимое отличие для сжатых копий": "Allowed difference for compressed copies",
+  "Помогает найти сильно сжатые и уменьшенные копии. Здесь наоборот: левее — строже": "Helps find heavily compressed and downsized copies. Here it is the other way round: further left is stricter",
+  "Сколько нужно одинаковых деталей": "How many matching details are needed",
+  "Сколько одинаковых мест должно найтись на двух фото": "How many identical spots must be found on the two photos",
+  "Сколько деталей должно совпасть, чтобы показать похожее старое фото": "How many details must match to show a similar old photo",
+  "Для настройки «Всё равно показывать старое фото». Левее — больше таких пар, среди них больше честных снимков того же места":
+    "For the “Still show an old photo” setting. Further left gives more such pairs, and more honest shots of the same place among them",
+  "Похожими считать, если сходство от": "Count as similar from a similarity of",
+  "Ниже этого фото считаются разными. Левее — больше похожих, но и больше случайных совпадений": "Below this, photos count as different. Further left gives more similar photos, but also more chance matches",
+  "Архив фото": "Photo archive",
+  "Ищет копии и похожие фото среди всех, что вы проверяли. В каждой группе помечает, какой файл оставить.": "Finds copies and similar photos among all the photos you have checked. Marks which file to keep in each group.",
+  "Сравнивает с фото, проверенными {0}": "Compares with photos checked {0}",
+  "Запоминает проверенные фото": "Remembers checked photos", "Не запоминает проверенные фото": "Does not remember checked photos",
+  "Показывает похожие среди старых фото": "Shows similar photos among old ones", "Из похожих старых фото показывает только очень похожие": "Shows only very similar old photos",
+  "Похожие старые фото скрывает": "Hides similar old photos", "Отмечает фото, возможно переснятые со старых": "Marks photos that may be re-shot from old ones",
+  "Серии снимков подряд не считает копиями": "Does not count bursts as copies", "Подсказывает, какой файл оставить": "Suggests which file to keep",
+  "Ненужные файлы переносит в папку «{0}»": "Moves unneeded files into the «{0}» folder", "Отмечает снимки, снятые больше {0} назад": "Marks shots taken more than {0} ago",
+  "Пороги изменены в точной настройке": "Thresholds changed in fine tuning", " (изменён)": " (changed)",
+  "Без названия": "Untitled", "используется": "in use", "Настройки изменены, можно вернуть исходные": "Settings changed, the originals can be restored", "Новый профиль": "New profile",
+  "Есть несохранённые изменения": "There are unsaved changes", "Сохранено. Этот профиль используется для проверки": "Saved. This profile is used for checks", "Сохранено": "Saved",
+  "Сохранить": "Save", "Отменить": "Undo", "Сохранить и использовать": "Save and use", "Использовать для проверки": "Use for checks", "Копировать": "Copy",
+  "Удалить": "Delete", "Вернуть исходные настройки": "Restore original settings", "Впишите название профиля": "Enter a profile name",
+  "Имя папки для ненужных файлов: без знаков / \\ : и без точки в начале": "Folder name for unneeded files: no / \\ : characters and no dot at the start",
+  "Сначала сохраните или отмените изменения в «{0}»": "First save or undo the changes in “{0}”", "Сначала сохраните или отмените изменения": "First save or undo the changes",
+  "{0} (копия)": "{0} (copy)", "Удалить профиль «{0}»? Это нельзя отменить.": "Delete the profile “{0}”? This cannot be undone.", "Оставить": "Keep",
+  "за последние {0}": "in the last {0}",
+  // reasons (decide() keeps them in Russian, they are translated only for display)
+  "те же пиксели": "same pixels", "нейросеть": "neural network", "хэш PDQ": "PDQ hash", "нейросеть + точки": "neural network + points",
+  "совпали точки": "points match", "похожее содержание": "similar content", "по камере это другой кадр": "the camera says it is another shot",
+  "в кадре что-то сдвинулось": "something moved in the frame", "обрезанная копия": "cropped copy", "переснято": "re-shot",
+  "много общих деталей со старым": "many details shared with an old photo",
+  "копия": "copy", "похожее": "similar", "тот же снимок": "same shot", "возможно, переснято": "possibly re-shot",
+  "Тот же снимок, только другой файл": "The same shot, just a different file", "Содержание совпадает": "The content matches",
+  "Совпадает, хотя фото сильно сжато или уменьшено": "Matches, although the photo is heavily compressed or downsized",
+  "Старое фото совпадает с частью нового: это его обрезанная копия": "The old photo matches part of the new one: it is a cropped copy",
+  "Похоже, и на обоих фото нашлись одинаковые детали": "Alike, and the same details were found on both photos",
+  "То же место, но другой снимок": "The same place, but a different shot",
+  "Похожее содержание: скорее всего, то же место или тот же предмет": "Similar content: most likely the same place or the same object",
+  "Старое фото целиком помещается в новом кадре и после выпрямления совпадает. Так выглядит снимок экрана или распечатки со старым фото. Но бывает и честный снимок того же места, сделанный с отходом назад":
+    "The old photo fits entirely inside the new shot and matches once straightened. This is what a photo of a screen or a printout showing the old photo looks like. But it can also be an honest shot of the same place taken from further back",
+  "Очень похоже, но по времени съёмки это другой кадр": "Very alike, but the capture time says it is another shot",
+  "Почти тот же кадр, но в нём что-то сдвинулось: это соседние снимки": "Almost the same shot, but something moved in it: these are consecutive shots",
+  // checking
+  "Читаю, что перетащили…": "Reading what you dropped…",
+  "Открываю окно выбора папки. Если его не видно, оно может быть за окном браузера": "Opening the folder picker. If you cannot see it, it may be behind the browser window",
+  "Ошибка: {0}": "Error: {0}",
+  "Получено файлов: {0}, но среди них нет фото. Подходят JPEG, PNG, WebP, HEIC, TIFF.": "Received {0} files, but none of them are photos. Supported: JPEG, PNG, WebP, HEIC, TIFF.",
+  "Браузер не передал файлы. Попробуйте кнопку «Выбрать папку» или «Выбрать файлы».": "The browser did not pass on any files. Try the “Choose folder” or “Choose files” button.",
+  "Загружаю {0} из {1}": "Uploading {0} of {1}", "Проверяю {0}…": "Checking {0}…", "Проверяю пачку заново…": "Checking the batch again…",
+  "Запускаю проверку папки…": "Starting the folder check…", "Ищу фото во вложенных папках…": "Looking for photos in subfolders…",
+  "Читаю файлы: {0} из {1}": "Reading files: {0} of {1}", "Обрабатываю новые фото: {0} из {1}": "Processing new photos: {0} of {1}",
+  ", осталось около {0} мин": ", about {0} min left", ", осталось меньше минуты": ", less than a minute left",
+  "Сравниваю все фото между собой…": "Comparing all photos with each other…",
+  "Проверяю, не пересняты ли новые фото со старых: {0} из {1}": "Checking whether new photos were re-shot from old ones: {0} of {1}",
+  "Проверяю, нет ли среди копий серий снимков: {0} из {1}": "Checking the copies for bursts: {0} of {1}",
+  "меньше секунды": "less than a second", "МБ": "MB", "КБ": "KB",
+  // result
+  "Что сделать с файлом": "What to do with the file", "Убрать": "Remove", "Открыть крупно": "Open large",
+  "из истории, лучше": "from history, better", "из истории": "from history", "лучший файл": "best file", "оставить": "keep", "загружено {0}": "uploaded {0}",
+  "точек {0}": "points {0}", "Похоже на старое фото. ": "Looks like an old photo. ",
+  "Совпало очень много одинаковых деталей. Проверьте глазами: это может быть старое фото, снятое с экрана вплотную, или честный снимок того же места":
+    "A great many identical details match. Check with your own eyes: it may be an old photo shot close up from a screen, or an honest shot of the same place",
+  "Серия снимков. ": "Burst. ", "Сняты подряд, с разницей {0}. Это разные кадры, не копии": "Shot in a row, {0} apart. These are different shots, not copies",
+  "Почти один и тот же кадр, но в нём что-то сдвинулось. Это соседние снимки, не копии": "Almost the same shot, but something moved in it. These are consecutive shots, not copies",
+  ". Качество лучше у фото из истории «{0}», поэтому новое оставлять незачем": ". The photo from history “{0}” has better quality, so there is no point keeping the new one",
+  "Сравнить крупно": "Compare large", "Это разные фото": "These are different photos", "Не дубль": "Not a duplicate", "Цифры по парам ({0})": "Numbers per pair ({0})",
+  "Копия. ": "Copy. ", "Возможно, переснято. ": "Possibly re-shot. ", "Похоже. ": "Similar. ",
+  "{0} со старыми": "{0} old ones", "{0} со старых": "{0} from old ones", "{0} раньше чем за {1} до загрузки": "{0} more than {1} before upload",
+  "{0} внутри пачки": "{0} within the batch", "{0} в нескольких местах": "{0} in several places", ", из них {0}": ", {0} of them",
+  "Копий и похожих не нашлось.": "No copies or similar photos found.", "Папка {0}. ": "Folder {0}. ",
+  "Сравнили с {0}, проверенными {1}. ": "Compared with {0} checked {1}. ", "На каждое новое фото ушло {0} мс.": "Each new photo took {0} ms.",
+  "Эти фото уже проверялись раньше, поэтому заново их не обсчитывали.": "These photos were checked before, so they were not processed again.",
+  " У {0} нет даты съёмки, их возраст не проверить.": " No capture date on {0}, so their age cannot be checked.",
+  "Со старыми фото": "Match old photos", "Возможно, переснято": "Possibly re-shot", "Сняты давно": "Shot long ago", "Копии": "Copies",
+  "Один файл в разных местах": "One file in several places", "Похожие": "Similar", "Почти совпали": "Near matches",
+  "Что показать": "What to show", "Всё": "All", "Нажмите, чтобы оставить на странице только этот раздел": "Click to show only this section",
+  "Не прочитаны: {0}": "Could not read: {0}",
+  "Совпали со старыми фото": "Match old photos", "это фото уже проверяли раньше": "these photos were checked before",
+  "Возможно, переснято со старого фото": "Possibly re-shot from an old photo", "проверьте глазами: это может быть и честный снимок": "check with your own eyes: it may be an honest shot",
+  "Сняты задолго до загрузки": "Shot long before upload", "по дате съёмки, записанной в файле": "by the capture date stored in the file",
+  "снято {0}, за {1} до загрузки": "shot {0}, {1} before upload",
+  "Снято больше чем за {0} до загрузки. Посмотрите, подходит ли вам такое старое фото.": "Shot more than {0} before upload. See whether such an old photo is acceptable to you.",
+  "Копии внутри пачки": "Copies within the batch", "один снимок в нескольких файлах": "one shot in several files", "Копий нет.": "No copies.",
+  "Один и тот же файл в нескольких местах": "The same file in several places", "файлы полностью одинаковые": "the files are fully identical", " — оставить": " — keep",
+  "Похожие кадры": "Similar shots", "другой снимок той же сцены, не копия": "a different shot of the same scene, not a copy", "Похожих нет.": "No similar photos.",
+  "Скрыли {0}: это другие снимки того же места, а не копии. Показать их можно в профиле, настройка «Показывать похожие среди старых фото». ":
+    "Hidden: {0}. These are other shots of the same place, not copies. They can be shown with the profile setting “Show similar photos among old ones”. ",
+  "Открыть профиль": "Open profile", "Вы отметили «не дубль», поэтому скрыто: {0}": "Hidden because you marked them “not a duplicate”: {0}", "Вернуть": "Restore",
+  "Почти совпали, но копией не признаны: {0}. Обычно это разные фото": "Near matches not counted as copies: {0}. Usually these are different photos",
+  "SSCD {0}, PDQ {1}, одинаковых деталей {2}": "SSCD {0}, PDQ {1}, matching details {2}", "сходство {0}%": "similarity {0}%",
+  "Уже проверялись раньше: {0}": "Checked before: {0}", "Ещё": "More", "Новая пачка: перетащите фото или папку": "New batch: drop photos or a folder",
+  "В группе должен остаться хотя бы один файл. Сначала отметьте «Оставить» у другого фото": "At least one file must stay in a group. First mark another photo “Keep”",
+  // moving files
+  "Оставляем {0}, переносим {1} ({2}) в папку «{3}»": "Keeping {0}, moving {1} ({2}) into the «{3}» folder",
+  ". Из них {0} в других местах": ". This includes {0} in other places", ". Ничего не удаляется": ". Nothing is deleted",
+  "Отметьте «Убрать» у фото, которые не нужны. Они переместятся в папку «{0}» внутри проверенной папки": "Mark the photos you do not need with “Remove”. They will be moved into the «{0}» folder inside the checked folder",
+  "Переместить в «{0}»": "Move to «{0}»", "Последний перенос {0}: {1}. ": "Last move {0}: {1}. ", "Вернуть их на место": "Put them back",
+  "Переместить {0} в {1}/{2}?": "Move {0} to {1}/{2}?", "Да, переместить": "Yes, move", "Отмена": "Cancel", "Переношу…": "Moving…",
+  "Не получилось: {0}": "Failed: {0}", "Перенесено в {0}: {1} ({2}).": "Moved to {0}: {1} ({2}).", "Не удалось: {0}.": "Failed: {0}.",
+  "Возвращено на место: {0}.": "Put back: {0}.", "Не удалось вернуть: {0} (на старом месте уже лежит файл).": "Could not put back: {0} (another file is already in the old place).",
+  " в группе": " in the group", ", снято {0}": ", shot {0}", ", из истории, загружено {0}": ", from history, uploaded {0}",
+  "Оставить только этот": "Keep only this one", "Оставляем только этот": "Keeping only this one",
+  "Отмечено «не дубль». Эта пара больше не появится.": "Marked “not a duplicate”. This pair will not appear again.",
+  // lab
+  "Выберите фото и испортите его. Справа видно, что заметил каждый метод и какое решение принято.": "Pick a photo and damage it. The right side shows what each method noticed and what was decided.",
+  "Изменения": "Changes", "Что сделать с фото": "What to do with the photo", "Отразить зеркально": "Mirror", "Надпись поверх": "Text on top",
+  "например, Продаю": "for example, For sale", "Без изменений": "No changes",
+  "Кроп по центру, % площади": "Center crop, % of area", "Срез с правого края, %": "Cut from the right edge, %", "Поворот, градусов": "Rotation, degrees",
+  "Наклон (другой ракурс)": "Tilt (another angle)", "Яркость, %": "Brightness, %", "Размер, %": "Size, %", "Качество JPEG": "JPEG quality",
+  "Сначала проверьте пачку на первой вкладке — её фото появятся здесь.": "First check a batch on the first tab: its photos will appear here.",
+  "Считаю…": "Computing…", "Исходное фото": "Original photo", "исходное": "original", "Изменённое фото": "Changed photo",
+  "изменённое: {0}×{1}, {2} КБ": "changed: {0}×{1}, {2} KB", "не дубль": "not a duplicate", "Решило: ": "Decided by: ",
+  "Ни один метод не дотянул до порога.": "No method reached its threshold.", "Нейросеть SSCD, сходство": "SSCD neural network, similarity",
+  "Красная черта — порог копии {0}. Разные фото обычно ниже 0.3": "The red line is the copy threshold, {0}. Different photos are usually below 0.3",
+  "Хэш PDQ, отличающихся бит": "PDQ hash, differing bits",
+  "С учётом поворотов на 90° и зеркала. Без них: {0}. Порог {1}, у разных фото около 128": "Counting 90° rotations and mirroring. Without them: {0}. Threshold {1}, different photos are around 128",
+  "Совпавшие точки ORB": "Matched ORB points", "Порог {0}. У случайных пар в тестах было до 12": "Threshold {0}. Random pairs in tests had up to 12",
+  "Время на изменённое фото: декод {0} мс, хэши {1} мс, нейросеть {2} мс, точки {3} мс": "Time for the changed photo: decoding {0} ms, hashes {1} ms, neural network {2} ms, points {3} ms",
+  // history
+  "Отпечатки всех запомненных фото. С каждой новой пачкой сравниваются те, что попадают в срок «Сверять с историей за» на вкладке «Проверка пачки».":
+    "Fingerprints of all remembered photos. Each new batch is compared with those within the “Compare with history for” period on the “Check a batch” tab.",
+  "История пуста. Отметьте «Запомнить в истории» при проверке пачки.": "History is empty. Turn on “Remember in history” when checking a batch.",
+  "фото в истории": "photos in history", "база с отпечатками": "fingerprint database", "Очистить историю": "Clear history",
+  "Пачка от {0}, {1} фото": "Batch of {0}, {1} photos", "Удалить все отпечатки и загруженные фото?": "Delete all fingerprints and uploaded photos?",
+  // tests
+  "Прогоны на открытых наборах INRIA. Copydays — копии с правками, Holidays — одна сцена с разных точек.": "Runs on the open INRIA datasets. Copydays: edited copies. Holidays: one scene from different viewpoints.",
+  "кроп 10% площади": "crop 10% of area", "кроп 20%": "crop 20%", "кроп 30%": "crop 30%", "кроп 40%": "crop 40%", "кроп 50%": "crop 50%", "кроп 60%": "crop 60%",
+  "кроп 70%": "crop 70%", "кроп 80%": "crop 80%", "срез с края 10%": "edge cut 10%", "срез с края 20%": "edge cut 20%", "срез с края 40%": "edge cut 40%",
+  "зеркало": "mirror", "сильные правки INRIA": "strong INRIA edits", "¼ размера + JPEG 3": "¼ size + JPEG 3",
+  "Отчётов нет. Запустите eval/run_copydays.py и укажите путь в DEDUP_TEST_REPORTS.": "No reports. Run eval/run_copydays.py and set the path in DEDUP_TEST_REPORTS.",
+  "Copydays: {0} изменённых копий нашли свой оригинал": "Copydays: {0} edited copies found their original",
+  "Что сделали с фото": "What was done to the photo", "Нашлось": "Found", "Ложных «копий» между разными фото:": "False “copies” between different photos:",
+  "Повторный прогон:": "Repeat run:", "{0} из {1} узнаны без пересчёта за {2} с": "{0} of {1} recognised without recomputing in {2} s",
+  "Окно 7 дней: совпадений со старыми фото": "7-day window, matches with old photos:", "Ложные копии": "False copies",
+  "SSCD {0}, PDQ {1}, точек {2}: {3}": "SSCD {0}, PDQ {1}, points {2}: {3}", "Что пропущено": "What was missed",
+  "Holidays: {0} фото, {1} пар «одна сцена»": "Holidays: {0} photos, {1} “same scene” pairs", "Решение": "Verdict", "Одна сцена": "Same scene", "Разные сцены": "Different scenes",
+  // quit
+  "Выключить программу? Чтобы снова проверять фото, её нужно будет запустить заново.": "Shut down the program? To check photos again, you will need to start it again.",
+  "Программа выключена. Эту вкладку можно закрыть.": "The program is shut down. You can close this tab.",
+};
+// plural(): English forms keyed by the Russian "one" form
+const EN_PL = {
+  "фото": ["photo", "photos"], "день": ["day", "days"], "дня": ["day", "days"], "секунда": ["second", "seconds"], "минута": ["minute", "minutes"],
+  "файл": ["file", "files"], "пара": ["pair", "pairs"], "фото проверено": ["photo checked", "photos checked"],
+  "фото совпало": ["photo matches", "photos match"], "фото, возможно, переснято": ["photo may be re-shot", "photos may be re-shot"],
+  "фото снято": ["photo taken", "photos taken"], "группа копий": ["copy group", "copy groups"], "файл лежит": ["file is", "files are"],
+  "группа похожих": ["group of similar photos", "groups of similar photos"], "серия снимков": ["burst", "bursts"],
+  "похожее старое фото": ["similar old photo", "similar old photos"], "одинаковый файл": ["identical file", "identical files"],
+};
+const MISSING = new Set();  // EN strings with no translation yet: seen in the console while testing
+const tr = s => { if (LANG !== "en") return s; if (EN[s] != null) return EN[s]; if (/[А-яЁё]/.test(s) && !MISSING.has(s)) { MISSING.add(s); console.warn("no EN:", s); } return s; };
+// tagged template: t`Загружаю ${k} из ${n}` looks up "Загружаю {0} из {1}"
+const t = (parts, ...v) => {
+  const ru = () => parts.reduce((a, p, i) => a + v[i - 1] + p);
+  if (LANG !== "en") return ru();
+  const key = parts.reduce((a, p, i) => a + `{${i - 1}}` + p);
+  if (EN[key] == null) { tr(key); return ru(); }
+  return EN[key].replace(/\{(\d+)\}/g, (_, n) => v[n]);
+};
+// the built-in profile's name and note are shown in the page language; a person's own profiles keep what they typed
+const pname = p => isBuiltin(p.id) ? tr(p.name) : p.name;
+const pnote = p => isBuiltin(p.id) ? tr(p.note || "") : p.note || "";
+// static page text: every text node and title/placeholder/aria-label/alt is looked up by its Russian source
+const SRC = new WeakMap();  // node -> {src, out}; attributes are kept as "attr" -> {src, out} in a Map per element
+function trText(src){ const key = src.trim(); return key && LANG === "en" && EN[key] != null ? src.replace(key, EN[key]) : src; }
+function trDom(root = document.body){
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n; (n = w.nextNode());) {
+    if (/^(SCRIPT|STYLE)$/.test(n.parentNode.nodeName)) continue;
+    let r = SRC.get(n);
+    if (!r || n.data !== r.out) { r = {src: n.data}; SRC.set(n, r); }  // new node, or the page changed its text since
+    r.out = trText(r.src); if (n.data !== r.out) n.data = r.out;
+  }
+  for (const el of root.querySelectorAll("[title],[placeholder],[aria-label],[alt]")) {
+    let m = SRC.get(el); if (!m) SRC.set(el, m = new Map());
+    for (const a of ["title", "placeholder", "aria-label", "alt"]) {
+      if (!el.hasAttribute(a)) continue;
+      let r = m.get(a); const cur = el.getAttribute(a);
+      if (!r || cur !== r.out) { r = {src: cur}; m.set(a, r); }
+      r.out = trText(r.src); if (cur !== r.out) el.setAttribute(a, r.out);
+    }
+  }
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll("main > section").forEach(s => s.hidden = s.id !== "tab-" + b.dataset.tab);
+  if (b.dataset.tab === "history") loadHistory();
+  if (b.dataset.tab === "tests") loadTests();
+  if (b.dataset.tab === "lab") loadSamples();
+  if (b.dataset.tab === "profiles") renderProfiles();
+  history.replaceState(null, "", "#" + b.dataset.tab);
+});
+
+/* ---------- talking to the page server ---------- */
+// every POST carries X-Dedup: other sites cannot send it, so they cannot move files through this page
+// X-Lang: the server answers its messages in the page language
+const post = (url, body, raw) => fetch(url, {method:"POST", headers:{"X-Dedup":"1", "X-Lang":LANG, ...(raw ? {} : {"Content-Type":"application/json"})},
+  body: raw ? body : JSON.stringify(body ?? {})}).then(x => x.json());
+const getJSON = url => fetch(url, {headers:{"X-Lang":LANG}}).then(x => x.json());
+const sleep = ms => new Promise(ok => setTimeout(ok, ms));
+const store = {get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} }};
+
+/* ---------- thresholds ---------- */
+const DEF = {sscd_copy:.75, sscd_geom:.60, sscd_cand:.33, pdq_max:31, orb_min:13, hist_orb:250};
+let T = {...DEF};
+const SL = [
+  ["sscd_copy","Сходство, при котором сразу копия",.5,.95,.01,"Сходство двух фото от 0 до 1. Правее — строже"],
+  ["sscd_geom","Сходство, при котором копия, если совпали детали",.3,.9,.01,"Фото чуть менее похожи, но на обоих нашлись одинаковые детали. Правее — строже"],
+  ["pdq_max","Допустимое отличие для сжатых копий",0,80,1,"Помогает найти сильно сжатые и уменьшенные копии. Здесь наоборот: левее — строже"],
+  ["orb_min","Сколько нужно одинаковых деталей",5,120,1,"Сколько одинаковых мест должно найтись на двух фото"],
+  ["hist_orb","Сколько деталей должно совпасть, чтобы показать похожее старое фото",50,600,10,"Для настройки «Всё равно показывать старое фото». Левее — больше таких пар, среди них больше честных снимков того же места"],
+  ["sscd_cand","Похожими считать, если сходство от",.2,.6,.01,"Ниже этого фото считаются разными. Левее — больше похожих, но и больше случайных совпадений"],
+];
+/* ---------- profiles: named sets of settings; the active one (CFG + T) drives every check ---------- */
+const BUILTIN = [
+  {id:"archive", name:"Архив фото", note:"Ищет копии и похожие фото среди всех, что вы проверяли. В каждой группе помечает, какой файл оставить.",
+   days:"0", keep:true, histSimilar:true, histStrong:true, rephoto:true, suggestKeep:true, oldDays:"0", exifRule:true, dupDir:"_дубли", T:{...DEF}},
+];
+const FIELDS = ["days","keep","histSimilar","histStrong","rephoto","suggestKeep","oldDays","exifRule","dupDir"];
+// settings added later: a profile saved before they existed gets these values
+const FIELD_DEF = {histStrong:true, rephoto:true, dupDir:"_дубли"};
+const DUP_OK = /^(?!\.)[^/\\:\0]{1,60}$/;
+const fval = (p, f) => p[f] ?? FIELD_DEF[f];
+let SAVED = [], CUR = null, CFG = {};
+const presets = () => [...BUILTIN.map(b => SAVED.find(s => s.id === b.id) || b), ...SAVED.filter(s => !BUILTIN.some(b => b.id === s.id))];
+const presetById = id => presets().find(p => p.id === id);
+const isBuiltin = id => BUILTIN.some(b => b.id === id);
+const edited = id => isBuiltin(id) && SAVED.some(s => s.id === id);
+const full = p => { const o = {id:p.id, name:p.name || "", note:p.note || "", T:{...DEF, ...(p.T || {})}}; FIELDS.forEach(f => o[f] = fval(p, f)); return o; };
+const same = (a, b) => FIELDS.every(f => fval(a, f) === fval(b, f)) && Object.keys(DEF).every(k => +(a.T?.[k] ?? DEF[k]) === +(b.T?.[k] ?? DEF[k]))
+  && (a.name || "") === (b.name || "") && (a.note || "") === (b.note || "");
+async function savePresets(){ await post("/api/presets", {presets: SAVED}); }
+
+// what a profile does, in plain lines: shown on the check screen
+function summary(p){
+  const out = [t`Сравнивает с фото, проверенными ${daysText(p.days)}`, tr(p.keep ? "Запоминает проверенные фото" : "Не запоминает проверенные фото")];
+  out.push(tr(p.histSimilar ? "Показывает похожие среди старых фото" : p.histStrong ? "Из похожих старых фото показывает только очень похожие" : "Похожие старые фото скрывает"));
+  if (p.rephoto) out.push(tr("Отмечает фото, возможно переснятые со старых"));
+  if (p.exifRule) out.push(tr("Серии снимков подряд не считает копиями"));
+  if (p.suggestKeep) out.push(tr("Подсказывает, какой файл оставить"));
+  out.push(t`Ненужные файлы переносит в папку «${p.dupDir}»`);
+  if (+p.oldDays) out.push(t`Отмечает снимки, снятые больше ${plural(+p.oldDays, "дня", "дней", "дней")} назад`);
+  if (Object.keys(DEF).some(k => +p.T[k] !== DEF[k])) out.push(tr("Пороги изменены в точной настройке"));
+  return out;
+}
+function applyPreset(id){
+  const p = full(presetById(id) || BUILTIN[0]);
+  CUR = p.id; store.set("preset", CUR);
+  CFG = p; T = {...p.T};
+  renderPresetUI(); renderResult(); renderLab(); recheckPeriod();
+}
+function renderPresetUI(){
+  $("#preset").innerHTML = presets().map(x => `<option value="${esc(x.id)}">${esc(pname(x))}${edited(x.id) ? tr(" (изменён)") : ""}</option>`).join("");
+  $("#preset").value = CUR;
+  $("#presetNote").textContent = pnote(CFG);
+  $("#presetSum").innerHTML = summary(CFG).map(x => `<li>${esc(x)}</li>`).join("");
+}
+$("#preset").onchange = e => applyPreset(e.target.value);
+$("#goProfiles").onclick = () => { if (!draftDirty()) EDIT = CUR; document.querySelector('nav button[data-tab="profiles"]').click(); };
+
+/* ---------- the profiles screen: list on the left, editor on the right, explicit save ---------- */
+let EDIT = null, DRAFT = null, BAR_MSG = "";
+const draftDirty = () => !!(DRAFT && presetById(DRAFT.id) && !same(DRAFT, full(presetById(DRAFT.id))));
+function renderProfiles(){
+  if (!presetById(EDIT)) EDIT = presetById(CUR) ? CUR : BUILTIN[0].id;  // opened by a link before profiles loaded
+  if (!DRAFT || DRAFT.id !== EDIT) { DRAFT = full(presetById(EDIT)); fillEditor(); }
+  $("#plist").innerHTML = presets().map(p => `<button type="button" class="pcard" data-pid="${esc(p.id)}" aria-pressed="${p.id === EDIT}">
+      <b>${esc(p.id === EDIT ? pname(DRAFT) || tr("Без названия") : pname(p))}</b>${p.id === CUR ? `<span class="pact">${tr("используется")}</span>` : ""}
+      <small>${esc(pnote(p))}</small>${edited(p.id) ? `<small class="pmod">${tr("Настройки изменены, можно вернуть исходные")}</small>` : ""}</button>`).join("")
+    + `<button type="button" class="btn quiet" id="pNew">${tr("Новый профиль")}</button>`;
+  renderBar();
+}
+function fillEditor(){
+  const b = isBuiltin(DRAFT.id);
+  $("#e-name").value = pname(DRAFT); $("#e-note").value = pnote(DRAFT);
+  $("#e-name").readOnly = $("#e-note").readOnly = b; $("#e-builtin").hidden = !b;
+  FIELDS.forEach(f => { const el = $("#e-" + f); if (el.type === "checkbox") el.checked = !!DRAFT[f]; else el.value = String(DRAFT[f]); });
+  $("#e-sliders").innerHTML = SL.map(([k,l,mi,ma,st,h]) =>
+    `<div class="ctl"><label for="es-${k}">${tr(l)} <output id="eo-${k}">${DRAFT.T[k]}</output></label>
+     <input type="range" id="es-${k}" data-k="${k}" min="${mi}" max="${ma}" step="${st}" value="${DRAFT.T[k]}"><small>${tr(h)}</small></div>`).join("");
+}
+function readEditor(){
+  if (!isBuiltin(DRAFT.id)) { DRAFT.name = $("#e-name").value.trim(); DRAFT.note = $("#e-note").value.trim(); }  // a built-in's fields are read-only and shown translated
+  FIELDS.forEach(f => { const el = $("#e-" + f); DRAFT[f] = el.type === "checkbox" ? el.checked : el.value; });
+  SL.forEach(([k]) => { DRAFT.T[k] = +$("#es-" + k).value; $("#eo-" + k).textContent = DRAFT.T[k]; });
+}
+function renderBar(){
+  const dirty = draftDirty(), active = DRAFT.id === CUR, own = !isBuiltin(DRAFT.id);
+  $("#pbar").innerHTML = `<span class="pstate${dirty || BAR_MSG ? " dirty" : ""}">${BAR_MSG ? esc(BAR_MSG) : tr(dirty ? "Есть несохранённые изменения" : active ? "Сохранено. Этот профиль используется для проверки" : "Сохранено")}</span>
+    <button class="btn" type="button" id="bSave"${dirty ? "" : " disabled"}>${tr("Сохранить")}</button>
+    <button class="btn quiet" type="button" id="bUndo"${dirty ? "" : " disabled"}>${tr("Отменить")}</button>
+    ${active ? "" : `<button class="btn quiet" type="button" id="bUse">${tr(dirty ? "Сохранить и использовать" : "Использовать для проверки")}</button>`}
+    <button class="btn quiet" type="button" id="bCopy">${tr("Копировать")}</button>
+    ${own ? `<button class="linkbtn" type="button" id="bDel">${tr("Удалить")}</button>` : edited(DRAFT.id) ? `<button class="linkbtn" type="button" id="bRestore">${tr("Вернуть исходные настройки")}</button>` : ""}`;
+  BAR_MSG = "";
+}
+async function saveDraft(){
+  if (!DRAFT.name) { BAR_MSG = tr("Впишите название профиля"); renderBar(); $("#e-name").focus(); return false; }
+  if (!DUP_OK.test(DRAFT.dupDir.trim())) { BAR_MSG = tr("Имя папки для ненужных файлов: без знаков / \\ : и без точки в начале"); renderBar(); $("#e-dupDir").focus(); return false; }
+  DRAFT.dupDir = DRAFT.dupDir.trim();
+  const orig = BUILTIN.find(b => b.id === DRAFT.id);
+  SAVED = SAVED.filter(x => x.id !== DRAFT.id);
+  if (!orig || !same(DRAFT, full(orig))) SAVED.push({...DRAFT, T:{...DRAFT.T}});  // a built-in profile back at its defaults needs no record
+  await savePresets();
+  if (DRAFT.id === CUR) applyPreset(CUR); else renderPresetUI();
+  renderProfiles(); return true;
+}
+async function addProfile(base, name){
+  const p = {...full(base), id: "u" + Date.now(), name, note: isBuiltin(base.id) ? "" : base.note};
+  SAVED.push(p); await savePresets(); renderPresetUI();
+  EDIT = p.id; DRAFT = null; renderProfiles(); $("#e-name").focus(); $("#e-name").select();
+}
+$("#peditor").addEventListener("input", () => { readEditor(); renderBar(); const c = $(`.pcard[data-pid="${CSS.escape(DRAFT.id)}"] b`); if (c) c.textContent = pname(DRAFT) || tr("Без названия"); });
+$("#peditor").addEventListener("submit", e => { e.preventDefault(); saveDraft(); });
+$("#e-reset").onclick = () => { DRAFT.T = {...DEF}; fillEditor(); renderBar(); };
+$("#plist").addEventListener("click", e => {
+  if (e.target.closest("#pNew")) {
+    if (draftDirty()) { BAR_MSG = t`Сначала сохраните или отмените изменения в «${pname(DRAFT)}»`; return renderBar(); }
+    return addProfile(BUILTIN[0], tr("Новый профиль"));
+  }
+  const c = e.target.closest(".pcard"); if (!c || c.dataset.pid === EDIT) return;
+  if (draftDirty()) { BAR_MSG = t`Сначала сохраните или отмените изменения в «${pname(DRAFT)}»`; return renderBar(); }
+  EDIT = c.dataset.pid; DRAFT = null; renderProfiles();
+});
+$("#pbar").addEventListener("click", async e => {
+  const id = e.target.id;
+  if (id === "bSave") await saveDraft();
+  if (id === "bUndo") { DRAFT = full(presetById(DRAFT.id)); fillEditor(); renderProfiles(); }
+  if (id === "bUse") { if (!draftDirty() || await saveDraft()) { applyPreset(DRAFT.id); renderProfiles(); } }
+  if (id === "bCopy") { if (draftDirty()) { BAR_MSG = tr("Сначала сохраните или отмените изменения"); return renderBar(); } addProfile(DRAFT, t`${pname(DRAFT)} (копия)`); }
+  if (id === "bRestore") { SAVED = SAVED.filter(x => x.id !== DRAFT.id); await savePresets(); if (DRAFT.id === CUR) applyPreset(CUR); else renderPresetUI(); DRAFT = null; renderProfiles(); }
+  if (id === "bDel") {
+    $("#pbar").innerHTML = `<span class="pstate dirty">${t`Удалить профиль «${esc(pname(DRAFT))}»? Это нельзя отменить.`}</span>
+      <button class="btn" type="button" id="bDelYes">${tr("Удалить")}</button><button class="btn quiet" type="button" id="bDelNo">${tr("Оставить")}</button>`;
+  }
+  if (id === "bDelNo") renderBar();
+  if (id === "bDelYes") {
+    const gone = DRAFT.id; SAVED = SAVED.filter(x => x.id !== gone); await savePresets();
+    if (gone === CUR) applyPreset(BUILTIN[0].id); else renderPresetUI();
+    EDIT = CUR; DRAFT = null; renderProfiles();
+  }
+});
+// the period is applied on the server, so a batch on screen is re-scanned when it changes
+function recheckPeriod(){
+  if (!R || String(R.window_days ?? 7) === String(CFG.days)) return;
+  if (R.root) runDir(R.root); else if (R.batch) rescan(R.batch);
+}
+const daysText = d => +d === 0 ? tr("за всё время") : +d === 365 ? tr("за год") : t`за последние ${plural(+d, "день", "дня", "дней")}`;
+
+function decide(c){
+  if (c.same_pixels) return ["exact","те же пиксели"];
+  const pdqHit = c.pdq_ok && c.pdq <= T.pdq_max;
+  if (c.sscd < T.sscd_cand && !pdqHit) return [null,""];
+  let v = null, r = "";
+  if (c.sscd >= T.sscd_copy) { v = "copy"; r = "нейросеть"; }
+  else if (pdqHit) { v = "copy"; r = "хэш PDQ"; }
+  else if (c.orb >= T.orb_min && c.sscd >= T.sscd_geom) { v = "copy"; r = "нейросеть + точки"; }
+  else if (c.orb >= T.orb_min) { v = "similar"; r = "совпали точки"; }
+  else { v = "similar"; r = "похожее содержание"; }
+  // a series: frames shot one after another. Not a copy; shown among similar photos with its own mark
+  const rule = CFG.exifRule;
+  if (v === "copy" && rule && c.different_shot) { v = "similar"; r += "; по камере это другой кадр"; }
+  else if (v === "copy" && rule && c.series) { v = "similar"; r += "; в кадре что-то сдвинулось"; }
+  // the "series" mark: content moved, or the camera says the frames were taken within two minutes
+  const it = R?.items, g = c.different_shot && it?.[c.i] ? gapS(it[c.i].captured, it[c.j].captured) : null;
+  const series = v === "similar" && (r.endsWith("; в кадре что-то сдвинулось") || (g != null && g <= 120));
+  // the old photo sits whole inside the new one and matches once straightened: maybe re-shot from a screen
+  // the old photo is a plain cropped part of the new one: that is a copy, whatever the neural score says
+  if (c.crop_of_new && v !== "copy") return ["copy", "обрезанная копия", false];
+  if (c.rephoto && v !== "copy" && CFG.rephoto) return ["rephoto", "переснято", false];
+  return [v, r, series];
+}
+const VN = {copy:"копия", similar:"похожее", exact:"тот же снимок", rephoto:"возможно, переснято"};
+const vn = v => tr(VN[v]);
+const rsn = r => r.split("; ").map(tr).join("; ");  // a reason from decide(), shown in the page language
+
+/* ---------- frame around a group: colour = verdict ---------- */
+function mark(el, kind){ el.dataset.kind = kind; }
+
+/* ---------- check a batch ---------- */
+let R = null;
+const drop = $("#drop");
+// Accept drops anywhere on the page, so a near-miss does not make the browser open the photo instead.
+["dragenter","dragover"].forEach(e => window.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("over"); }));
+window.addEventListener("dragleave", ev => { if (!ev.relatedTarget) drop.classList.remove("over"); });
+window.addEventListener("drop", async ev => {
+  ev.preventDefault(); drop.classList.remove("over");
+  document.querySelector('nav button[data-tab="check"]').click();
+  $("#status").textContent = tr("Читаю, что перетащили…");
+  run(await droppedFiles(ev.dataTransfer));
+});
+async function droppedFiles(dt){
+  const entries = [...(dt.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (!entries.length) return [...dt.files];
+  const out = [];
+  async function walk(en){
+    if (en.isFile) { const f = await new Promise((ok, no) => en.file(ok, no)); f.relPath = en.fullPath.replace(/^\//, ""); out.push(f); return; }
+    const rd = en.createReader();
+    for (;;) { const batch = await new Promise((ok, no) => rd.readEntries(ok, no)); if (!batch.length) break; for (const e of batch) await walk(e); }
+  }
+  for (const en of entries) await walk(en);
+  return out;
+}
+$("#files").onchange = e => run([...e.target.files]);
+$("#folder").onchange = e => run([...e.target.files]);
+// "Выбрать папку" opens the system folder chooser through the page server: then the real path is known,
+// the folder is checked in place and extra files can be moved. Without it (not a Mac) the browser upload is used.
+$("#pickDir").onclick = async () => {
+  $("#status").textContent = tr("Открываю окно выбора папки. Если его не видно, оно может быть за окном браузера");
+  let r;
+  try { r = await post("/api/choose_folder"); } catch (e) { r = {error: String(e)}; }
+  if (r.path) { $("#dirPath").value = r.path; return runDir(r.path); }
+  $("#status").textContent = "";
+  if (r.error) $("#folder").click();
+};
+$("#pathForm").onsubmit = e => { e.preventDefault(); const v = $("#dirPath").value.trim(); if (v) runDir(v); };
+// the button is needed only for a typed path or to check the folder on screen again; "Выбрать папку" starts the check itself
+const normPath = v => v.trim().replace(/\/+$/, "");
+function syncPathBtn(){
+  const v = normPath($("#dirPath").value), same = !!R?.root && (v === R.root || "/private" + v === R.root);
+  $("#pathGo").hidden = !v;
+  $("#pathGo").textContent = tr(same ? "Проверить ещё раз" : "Проверить эту папку");
+}
+$("#dirPath").addEventListener("input", syncPathBtn);
+
+function showResult(r){
+  if (r.error) { $("#status").innerHTML = `<span class="err">${t`Ошибка: ${esc(r.error)}`}</span>`; return false; }
+  R = r; SEL = {...(r.choices || {})}; $("#status").textContent = ""; renderResult(); syncPathBtn(); return true;
+}
+async function run(files){
+  const total = files.length;
+  files = files.filter(f => /\.(jpe?g|png|webp|heic|heif|tiff?|bmp)$/i.test(f.name) && !f.name.startsWith("."));
+  if (!files.length) { $("#status").textContent = total ? t`Получено файлов: ${total}, но среди них нет фото. Подходят JPEG, PNG, WebP, HEIC, TIFF.` : tr("Браузер не передал файлы. Попробуйте кнопку «Выбрать папку» или «Выбрать файлы»."); return; }
+  const batch = "b" + Date.now();
+  let k = 0;
+  for (const f of files) {
+    $("#status").textContent = t`Загружаю ${++k} из ${files.length}`;
+    const rel = f.relPath || f.webkitRelativePath || f.name;
+    await post(`/api/upload?batch=${batch}&name=${encodeURIComponent(rel.split("/").join("__"))}`, f, true);
+  }
+  $("#status").textContent = t`Проверяю ${plural(files.length, "фото", "фото", "фото")}…`;
+  showResult(await post(`/api/scan?batch=${batch}&keep=${CFG.keep?1:0}&days=${CFG.days}`));
+}
+async function rescan(batch){
+  $("#status").textContent = tr("Проверяю пачку заново…");
+  showResult(await post(`/api/scan?batch=${encodeURIComponent(batch)}&keep=0&days=${CFG.days}`));
+}
+// a folder on disk: the server reads it in place, in the background; the page asks how far it got
+let JOB = 0;
+async function runDir(path, after){
+  const my = ++JOB;
+  $("#status").textContent = tr("Запускаю проверку папки…");
+  const s = await post("/api/scan_dir", {path, keep: CFG.keep, days: CFG.days});
+  if (s.error) { $("#status").innerHTML = `<span class="err">${esc(s.error)}</span>`; return; }
+  $("#dirPath").value = s.root;
+  let fpStart = null;
+  for (;;) {
+    await sleep(700);
+    if (my !== JOB) return;  // a newer check replaced this one
+    const j = await getJSON(`/api/job?id=${s.job}`);
+    if (j.error) { $("#status").innerHTML = `<span class="err">${esc(j.error)}</span>`; return; }
+    if (j.stage === "done") { showResult(j.result); after?.(); return; }
+    if (j.stage === "error") { $("#status").innerHTML = `<span class="err">${t`Ошибка: ${esc(j.error)}`}</span>`; return; }
+    let msg = tr("Ищу фото во вложенных папках…");
+    if (j.stage === "hash") msg = t`Читаю файлы: ${j.done} из ${j.total}`;
+    if (j.stage === "fingerprint") {
+      fpStart ??= {t: Date.now(), d: j.done};
+      const rate = (j.done - fpStart.d) / ((Date.now() - fpStart.t) / 1000), left = rate > 0 ? (j.total - j.done) / rate : 0;
+      msg = t`Обрабатываю новые фото: ${j.done} из ${j.total}` + (left > 60 ? t`, осталось около ${Math.round(left / 60)} мин` : left > 0 ? tr(", осталось меньше минуты") : "");
+    }
+    if (j.stage === "match") msg = tr("Сравниваю все фото между собой…");
+    if (j.stage === "rephoto") msg = t`Проверяю, не пересняты ли новые фото со старых: ${j.done} из ${j.total}`;
+    if (j.stage === "series") msg = t`Проверяю, нет ли среди копий серий снимков: ${j.done} из ${j.total}`;
+    $("#status").textContent = msg;
+  }
+}
+
+const PLAIN = {
+  "те же пиксели": "Тот же снимок, только другой файл",
+  "нейросеть": "Содержание совпадает",
+  "хэш PDQ": "Совпадает, хотя фото сильно сжато или уменьшено",
+  "обрезанная копия": "Старое фото совпадает с частью нового: это его обрезанная копия",
+  "нейросеть + точки": "Похоже, и на обоих фото нашлись одинаковые детали",
+  "совпали точки": "То же место, но другой снимок",
+  "похожее содержание": "Похожее содержание: скорее всего, то же место или тот же предмет",
+  "переснято": "Старое фото целиком помещается в новом кадре и после выпрямления совпадает. Так выглядит снимок экрана или распечатки со старым фото. Но бывает и честный снимок того же места, сделанный с отходом назад",
+};
+const plain = r => r.endsWith("; по камере это другой кадр") ? tr("Очень похоже, но по времени съёмки это другой кадр")
+  : r.endsWith("; в кадре что-то сдвинулось") ? tr("Почти тот же кадр, но в нём что-то сдвинулось: это соседние снимки")
+  : r.split("; ").map(x => tr(PLAIN[x] || x)).join("; ");
+// seconds between two capture times, or null
+const gapS = (a, b) => { const x = capDate(a), y = capDate(b); return x && y ? Math.abs(x - y) / 1000 : null; };
+const gapText = s => s < 1 ? tr("меньше секунды") : s < 90 ? plural(Math.round(s), "секунда", "секунды", "секунд") : plural(Math.round(s / 60), "минута", "минуты", "минут");
+const fmtDate = s => { const d = new Date(s); return isNaN(d) ? s.slice(0,10) : d.toLocaleDateString(LANG === "en" ? "en-GB" : "ru-RU", {day:"numeric", month:"long"}); };
+const plural = (n, one, few, many) => {
+  if (LANG === "en") { const f = EN_PL[one]; if (!f) tr(one); return `${n} ${f ? f[n === 1 ? 0 : 1] : one}`; }
+  const a = n % 10, b = n % 100; return `${n} ${a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many}`; };
+const mb = b => b >= 1048576 ? `${(b / 1048576).toFixed(1)} ${tr("МБ")}` : `${Math.max(1, Math.round(b / 1024))} ${tr("КБ")}`;
+const capDate = s => { const m = /^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)/.exec(s || ""); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null; };
+const pairKey = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+let VIEW = [], PLAN = [], LAST_REVIEW = null, MOVE_MSG = "", FILTER = "all", FILTER_R = null;
+// keep/remove per photo: SEL = what the person picked (saved on the server), DEF_CH = the program's suggestion
+let SEL = {}, DEF_CH = {}, NOTE = "";
+const choiceOf = x => SEL[R.items[x].sha] ?? DEF_CH[x] ?? "keep";
+// result chips: "Всё" shows every section, any other chip leaves only its own
+function applyFilter(){
+  document.querySelectorAll("#result .jump [data-f]").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === FILTER));
+  document.querySelectorAll("#result section.rs").forEach(s => s.hidden = FILTER !== "all" && s.dataset.sec !== FILTER);
+  const nd = $("#secNear"); if (nd && FILTER === "near") nd.open = true;
+}
+const gkey = g => g.map(x => R.items[x].sha).sort().join(",");
+
+function renderResult(){
+  if (!R) return;
+  const it = R.items, n = it.length, suggest = CFG.suggestKeep;
+  let hiddenHist = 0;
+  const reviewed = [];
+  const decided = R.candidates.map(c => {
+    let d = decide(c);
+    if (d[0] && R.reviews[pairKey(it[c.i].sha, it[c.j].sha)] === "not_dup") { reviewed.push(c); d = [null, ""]; }
+    if (d[0] === "similar" && !CFG.histSimilar && (!it[c.i].new || !it[c.j].new)) {
+      if (CFG.histStrong && c.orb >= T.hist_orb) d = ["similar", d[1] + "; много общих деталей со старым", d[2]];
+      else { d = [null, ""]; hiddenHist++; }
+    }
+    return {c, d};
+  });
+  const uf = () => { const p = [...Array(n).keys()]; const f = x => p[x] === x ? x : (p[x] = f(p[x])); return [p, f]; };
+  const [pc, fc] = uf(), [ps, fs] = uf();
+  // two photos known to be different frames (camera time, or content moved) never end up in one copy group,
+  // even through a third file that is a copy of each: strongest copy links are joined first
+  const apart = new Set(decided.filter(({c,d}) => d[0] === "similar" && /; (по камере это другой кадр|в кадре что-то сдвинулось)$/.test(d[1])).map(({c}) => `${c.i}|${c.j}`));
+  const members = Array.from({length: n}, (_, k) => [k]);
+  const clash = (ra, rb) => apart.size && members[ra].some(x => members[rb].some(y => apart.has(`${Math.min(x,y)}|${Math.max(x,y)}`)));
+  decided.filter(({d}) => d[0] === "copy" || d[0] === "exact").sort((x, y) => y.c.sscd - x.c.sscd).forEach(({c}) => {
+    const ra = fc(c.i), rb = fc(c.j);
+    if (ra === rb || clash(ra, rb)) return;
+    pc[ra] = rb; members[rb] = members[rb].concat(members[ra]);
+  });
+  decided.forEach(({c,d}) => { if (d[0] === "similar" && fc(c.i) !== fc(c.j)) ps[fs(c.i)] = fs(c.j); });
+  const collect = f => { const g = {}; for (let x=0;x<n;x++) (g[f(x)] ??= []).push(x); return Object.values(g).filter(v => v.length > 1); };
+  const copyGroups = collect(fc), simGroups = collect(fs);
+  const oldMatch = copyGroups.filter(g => g.some(x => !it[x].new) && g.some(x => it[x].new));
+  const inBatch = copyGroups.filter(g => !oldMatch.includes(g) && g.some(x => it[x].new));
+  const rephotoGroups = (() => { const by = {}; decided.filter(({d}) => d[0] === "rephoto").forEach(({c}) => {
+    const nw = it[c.i].new ? c.i : c.j, old = nw === c.i ? c.j : c.i; (by[nw] ??= [nw]).push(old); });
+    return Object.values(by).map(g => [...g.slice(1), g[0]]); })();
+  const near = decided.filter(({c,d}) => !d[0] && !reviewed.includes(c)).sort((a,b) => b.c.sscd - a.c.sscd).slice(0, 12);
+  const newCount = it.filter(x => x.new).length;
+  const sameFile = it.map((x, k) => k).filter(k => it[k].paths.length > 1);
+  const tm = R.timing, perPhoto = tm.photos ? Math.round(tm.fingerprint_s * 1000 / tm.photos) : 0;
+  VIEW = [];
+
+  // photos shot long before they were uploaded: the cheap sign of an old photo passed off as new
+  const oldDays = +CFG.oldDays, bAt = new Date(R.batch_at);
+  const fresh = it.map((x, k) => k).filter(k => it[k].new);
+  const oldShots = oldDays ? fresh.filter(k => { const d = capDate(it[k].captured); return d && bAt - d > oldDays * 864e5; }) : [];
+  const noDate = oldDays ? fresh.filter(k => !capDate(it[k].captured)).length : 0;
+  const ago = k => Math.floor((bAt - capDate(it[k].captured)) / 864e5);
+
+  // which file to keep: a person's pick, else the largest; then camera data, then closeness to the others
+  // (edits drift away from the original), then file weight
+  const betterOld = new Set();
+  const best = g => {
+    const cand = g.filter(x => it[x].new);
+    if (!cand.length) return null;
+    const near = {}; decided.forEach(({c}) => { if (g.includes(c.i) && g.includes(c.j)) { near[c.i] = (near[c.i]||0) + c.sscd; near[c.j] = (near[c.j]||0) + c.sscd; } });
+    const score = x => [it[x].w * it[x].h, it[x].camera ? 1 : 0, Math.round((near[x] || 0) * 100), it[x].bytes];
+    const better = (a, b) => { const A = score(a), B = score(b); for (let i = 0; i < A.length; i++) if (A[i] !== B[i]) return A[i] > B[i]; return false; };
+    const top = cand.reduce((a, x) => better(x, a) ? x : a, cand[0]);
+    // an old photo of better quality: none of the new files is worth keeping, so no "оставить" mark at all
+    const old = g.filter(x => !it[x].new && it[x].exists !== false && better(x, top)).reduce((a, x) => a == null || better(x, a) ? x : a, null);
+    if (old != null) { betterOld.add(old); return null; }
+    return top;
+  };
+  DEF_CH = {};
+  if (suggest) [...oldMatch, ...inBatch].forEach(g => { const k = best(g); if (k != null) g.forEach(x => { if (x !== k && it[x].new) DEF_CH[x] = "remove"; }); });
+  const label = x => it[x].rel || it[x].name;
+  // photos of a folder on disk get "Оставить / Убрать"; uploaded batches only show the suggestion
+  const pickable = (x, extra) => !!R.root && it[x].new && extra === undefined;
+  const picker = x => { const ch = choiceOf(x); return `<div class="pick" role="group" aria-label="${tr("Что сделать с файлом")}">
+      <button type="button" data-pick="${x}" data-v="keep" aria-pressed="${ch === "keep"}">${tr("Оставить")}</button><button type="button" data-pick="${x}" data-v="remove" aria-pressed="${ch === "remove"}">${tr("Убрать")}</button></div>`; };
+  const slide = (x, gi, keepX, extra) => `<div class="slide${pickable(x, extra) && choiceOf(x) === "remove" ? " out" : ""}" data-g="${gi}" data-x="${x}"${pickable(x, extra) ? ` data-px="${x}"` : ""} title="${tr("Открыть крупно")}">
+      ${!it[x].new ? `<span class="badge">${tr(betterOld.has(x) && VIEW[gi]?.keep === null && ["copy", "exact"].includes(VIEW[gi]?.kind) ? "из истории, лучше" : "из истории")}</span>` : keepX === x ? `<span class="badge keep">${tr(pickable(x, extra) ? "лучший файл" : "оставить")}</span>` : ""}
+      <img src="${img(it[x].path)}" alt="${esc(it[x].name)}" loading="lazy">
+      <div class="cap" title="${esc(label(x))}">${esc(it[x].name)}</div>
+      ${extra ?? (it[x].new ? `<div class="cap">${it[x].w}×${it[x].h}${it[x].bytes ? ", " + mb(it[x].bytes) : ""}</div>` : `<div class="tag">${t`загружено ${esc(fmtDate(it[x].at))}`}</div>`)}
+      ${pickable(x, extra) ? picker(x) : ""}</div>`;
+  const pairs = g => decided.filter(({c,d}) => d[0] && g.includes(c.i) && g.includes(c.j));
+  const techTable = list => `<div class="why"><table>${list.map(({c,d}) => `<tr><td>${esc(it[c.i].name)} ↔ ${esc(it[c.j].name)}</td><td class="v-${d[0]}">${vn(d[0])}</td><td>${esc(rsn(d[1]))}</td><td>SSCD ${c.sscd.toFixed(2)}</td><td>PDQ ${c.pdq}</td><td>${t`точек ${c.orb}`}</td></tr>`).join("")}</table></div>`;
+  const keepOf = {};
+  const card = (g, kind, lead) => {
+    const gi = VIEW.push({g, kind}) - 1, ps = pairs(g);
+    // one reason under the card: the strongest one in the group, in plain words
+    const order = Object.keys(PLAIN), rank = r => { const k = order.indexOf(r.split("; ")[0]); return k < 0 ? 99 : k; };
+    const own = ps.filter(({d}) => kind === "similar" ? d[0] === "similar" : d[0] !== "similar");
+    const top = (own.length ? own : ps).map(({d}) => d[1]).sort((x, y) => rank(x) - rank(y))[0] || "";
+    const keepX = suggest && kind !== "similar" && kind !== "rephoto" ? best(g) : null;
+    keepOf[gi] = VIEW[gi].keep = keepX;
+    let why = plain(top);
+    const ser = kind === "similar" && own.some(({d}) => d[2]);
+    if (kind === "similar" && own.some(({d}) => d[1].endsWith("; много общих деталей со старым"))) {
+      lead = "Похоже на старое фото. ";
+      why = tr("Совпало очень много одинаковых деталей. Проверьте глазами: это может быть старое фото, снятое с экрана вплотную, или честный снимок того же места");
+    } else if (ser) {
+      lead = "Серия снимков. ";
+      const gaps = own.filter(({d}) => d[2]).map(({c}) => gapS(it[c.i].captured, it[c.j].captured)).filter(x => x != null);
+      why = gaps.length ? t`Сняты подряд, с разницей ${gapText(Math.max(...gaps))}. Это разные кадры, не копии` : tr("Почти один и тот же кадр, но в нём что-то сдвинулось. Это соседние снимки, не копии");
+    }
+    const keepable = suggest && kind !== "similar" && kind !== "rephoto";
+    const oldBest = keepable && keepX == null ? g.find(x => betterOld.has(x)) : undefined;
+    if (oldBest != null) why += t`. Качество лучше у фото из истории «${label(oldBest)}», поэтому новое оставлять незачем`;
+    return `<div class="group card" data-kind="${kind}"${ser ? ' data-series="1"' : ""}>
+      <div class="strip">${g.map(x => slide(x, gi, keepX)).join("")}</div>
+      <p class="reason"><span class="v-${kind}">${tr(lead)}</span>${esc(why)}</p>
+      <div class="cardfoot"><button class="linkbtn" data-open="${gi}">${tr("Сравнить крупно")}</button>
+        <button class="linkbtn" data-notdup="${gi}">${tr(kind === "similar" ? "Это разные фото" : "Не дубль")}</button>
+        <details><summary>${t`Цифры по парам (${ps.length})`}</summary>${techTable(ps)}</details></div></div>`;
+  };
+
+  // one-sentence answer first
+  const bits = [];
+  if (oldMatch.length) bits.push(`<em>${t`${plural(oldMatch.length, "фото совпало", "фото совпали", "фото совпали")} со старыми`}</em>`);
+  if (rephotoGroups.length) bits.push(`<em>${t`${plural(rephotoGroups.length, "фото, возможно, переснято", "фото, возможно, пересняты", "фото, возможно, пересняты")} со старых`}</em>`);
+  if (oldShots.length) bits.push(`<em>${t`${plural(oldShots.length, "фото снято", "фото сняты", "фото сняты")} раньше чем за ${plural(oldDays, "день", "дня", "дней")} до загрузки`}</em>`);
+  if (inBatch.length) bits.push(t`${plural(inBatch.length, "группа копий", "группы копий", "групп копий")} внутри пачки`);
+  if (sameFile.length) bits.push(t`${plural(sameFile.length, "файл лежит", "файла лежат", "файлов лежат")} в нескольких местах`);
+  const nSeries = simGroups.filter(g => pairs(g).some(({d}) => d[0] === "similar" && d[2])).length;
+  if (simGroups.length) bits.push(`${plural(simGroups.length, "группа похожих", "группы похожих", "групп похожих")}${nSeries ? t`, из них ${plural(nSeries, "серия снимков", "серии снимков", "серий снимков")}` : ""}`);
+  let h = `<p class="answer">${plural(newCount, "фото проверено", "фото проверено", "фото проверено")}. ${bits.length ? bits.join(", ") + "." : tr("Копий и похожих не нашлось.")}</p>
+    <p class="meta">${R.root ? t`Папка ${esc(R.root)}. ` : ""}${t`Сравнили с ${plural(R.window, "фото", "фото", "фото")}, проверенными ${daysText(R.window_days ?? 7)}. `}${tm.photos ? t`На каждое новое фото ушло ${perPhoto} мс.` : tr("Эти фото уже проверялись раньше, поэтому заново их не обсчитывали.")}${noDate ? t` У ${plural(noDate, "фото", "фото", "фото")} нет даты съёмки, их возраст не проверить.` : ""}</p>`;
+
+  const jumps = [];
+  const chip = (f, label, n, hot) => jumps.push({f, html: `<button type="button" data-f="${f}"${hot ? ' class="hot"' : ""}>${tr(label)} <b>${n}</b></button>`});
+  if (oldMatch.length) chip("old", "Со старыми фото", oldMatch.length, true);
+  if (rephotoGroups.length) chip("rephoto", "Возможно, переснято", rephotoGroups.length, true);
+  if (oldShots.length) chip("age", "Сняты давно", oldShots.length, true);
+  if (inBatch.length) chip("copy", "Копии", inBatch.length);
+  if (sameFile.length) chip("same", "Один файл в разных местах", sameFile.length);
+  if (simGroups.length) chip("sim", "Похожие", simGroups.length);
+  if (near.length) chip("near", "Почти совпали", near.length);
+  if (FILTER_R !== R || !jumps.some(j => j.f === FILTER)) { FILTER = "all"; FILTER_R = R; }
+  if (jumps.length > 1) h += `<nav class="jump" aria-label="${tr("Что показать")}"><button type="button" data-f="all">${tr("Всё")}</button>${jumps.map(j => j.html).join("")}<span class="jhint">${tr("Нажмите, чтобы оставить на странице только этот раздел")}</span></nav>`;
+  else FILTER = "all";
+
+  if (R.failed.length) h += `<p class="err">${t`Не прочитаны: ${R.failed.map(x => esc(x.name)).join(", ")}`}</p>`;
+  const sec = (f, html) => `<section class="rs" data-sec="${f}">${html}</section>`;
+  if (oldMatch.length) h += sec("old", `<h2 class="sec" id="secOld">${tr("Совпали со старыми фото")} <small>${tr("это фото уже проверяли раньше")}</small></h2>` + oldMatch.map(g => card(g, "copy", "Копия. ")).join(""));
+  if (rephotoGroups.length) h += sec("rephoto", `<h2 class="sec" id="secRephoto">${tr("Возможно, переснято со старого фото")} <small>${tr("проверьте глазами: это может быть и честный снимок")}</small></h2>` + rephotoGroups.map(g => card(g, "rephoto", "Возможно, переснято. ")).join(""));
+  if (oldShots.length) {
+    const gi = VIEW.push({g: oldShots, kind: "old"}) - 1;
+    h += sec("age", `<h2 class="sec" id="secAge">${tr("Сняты задолго до загрузки")} <small>${tr("по дате съёмки, записанной в файле")}</small></h2>
+      <div class="group card" data-kind="old"><div class="strip">${oldShots.map(x => slide(x, gi, null, `<div class="tag">${t`снято ${esc(fmtDate(capDate(it[x].captured)))}, за ${plural(ago(x), "день", "дня", "дней")} до загрузки`}</div>`)).join("")}</div>
+      <p class="reason">${t`Снято больше чем за ${plural(oldDays, "день", "дня", "дней")} до загрузки. Посмотрите, подходит ли вам такое старое фото.`}</p></div>`);
+  }
+  if (inBatch.length || !oldMatch.length) h += sec("copy", `<h2 class="sec" id="secCopy">${tr(oldMatch.length ? "Копии внутри пачки" : "Копии")} <small>${tr("один снимок в нескольких файлах")}</small></h2>` +
+    (inBatch.length ? inBatch.map(g => card(g, pairs(g).some(x => x.d[0] === "copy") ? "copy" : "exact", "Копия. ")).join("") : `<p class="empty">${tr("Копий нет.")}</p>`));
+  if (sameFile.length) h += sec("same", `<h2 class="sec" id="secSame">${tr("Один и тот же файл в нескольких местах")} <small>${tr("файлы полностью одинаковые")}</small></h2>` + sameFile.map(x => {
+    const gi = VIEW.push({g: [x], kind: "exact"}) - 1;
+    return `<div class="group card" data-kind="exact"><div class="strip">${slide(x, gi, null, "")}</div>
+      <ul class="files">${it[x].paths.map((p, i) => `<li class="${i ? "out" : suggest ? "keep" : ""}">${esc(R.root ? p.slice(R.root.length + 1) : p.split("/").pop().replace(/^.*__/, ""))}${i === 0 && suggest ? tr(" — оставить") : ""}</li>`).join("")}</ul></div>`;
+  }).join(""));
+  h += sec("sim", `<h2 class="sec" id="secSim">${tr("Похожие кадры")} <small>${tr("другой снимок той же сцены, не копия")}</small></h2>` +
+    (simGroups.length ? simGroups.map(g => card(g, "similar", "Похоже. ")).join("") : `<p class="empty">${tr("Похожих нет.")}</p>`) +
+    (hiddenHist ? `<p class="hint">${t`Скрыли ${plural(hiddenHist, "похожее старое фото", "похожих старых фото", "похожих старых фото")}: это другие снимки того же места, а не копии. Показать их можно в профиле, настройка «Показывать похожие среди старых фото». `}<button class="linkbtn" type="button" data-goprofiles="1">${tr("Открыть профиль")}</button></p>` : ""));
+
+  const extra = [];
+  if (reviewed.length) extra.push(`<details class="more" id="secReviewed"><summary>${t`Вы отметили «не дубль», поэтому скрыто: ${plural(reviewed.length, "пара", "пары", "пар")}`}</summary><table class="near">${reviewed.map(c =>
+      `<tr><td><img src="${img(it[c.i].path,96)}" alt=""></td><td><img src="${img(it[c.j].path,96)}" alt=""></td><td>${esc(it[c.i].name)} ↔ ${esc(it[c.j].name)}</td><td><button class="linkbtn" data-unreview="${it[c.i].sha}|${it[c.j].sha}">${tr("Вернуть")}</button></td></tr>`).join("")}</table></details>`);
+  if (near.length) h += sec("near", `<details class="more" id="secNear"><summary>${t`Почти совпали, но копией не признаны: ${near.length}. Обычно это разные фото`}</summary><table class="near">${near.map(({c}) =>
+      `<tr><td><img src="${img(it[c.i].path,96)}" alt=""></td><td><img src="${img(it[c.j].path,96)}" alt=""></td><td>${esc(it[c.i].name)} ↔ ${esc(it[c.j].name)}</td><td title="${t`SSCD ${c.sscd.toFixed(2)}, PDQ ${c.pdq}, одинаковых деталей ${c.orb}`}">${t`сходство ${Math.round(c.sscd * 100)}%`}</td></tr>`).join("")}</table></details>`);
+
+  if (R.seen_before.length) extra.push(`<details class="more"><summary>${t`Уже проверялись раньше: ${R.seen_before.length}`}</summary><ul class="namelist">${R.seen_before.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>`);
+  if (extra.length) h += sec("more", `<h2 class="sec">${tr("Ещё")}</h2>` + extra.join(""));
+
+  if (R.root) h += `<div id="tidy"></div>`;
+  $("#result").innerHTML = h;
+  applyFilter();
+
+  buildPlan();
+  renderTidy();
+  // after a result the drop zone shrinks to one line
+  drop.classList.add("compact"); $("#dropText").textContent = tr("Новая пачка: перетащите фото или папку");
+  $("#dropRow").style.justifyContent = "flex-start";
+}
+
+// files to move: every photo marked "remove" (all its copies), plus extra identical copies of the photos that stay
+function buildPlan(){
+  PLAN = [];
+  if (!R?.root) return;
+  const it = R.items, seen = new Set(), add = (p, sha, forget) => { if (!seen.has(p)) { seen.add(p); PLAN.push({path: p, sha, forget}); } };
+  const grouped = new Set(VIEW.filter(v => v.g.length > 1).flatMap(v => v.g));
+  it.forEach((x, k) => { if (x.new && grouped.has(k) && choiceOf(k) === "remove") x.paths.forEach(p => add(p, x.sha, true)); });
+  it.forEach(x => x.new && x.paths.slice(1).forEach(p => add(p, x.sha, false)));
+}
+function setChoices(map){  // {index: "keep" | "remove"}
+  const it = R.items, out = {};
+  Object.entries(map).forEach(([x, v]) => { SEL[it[x].sha] = v; out[it[x].sha] = v; });
+  post("/api/choices", {scope: R.scope, choices: out});
+  document.querySelectorAll("#result [data-px]").forEach(el => {
+    const ch = choiceOf(+el.dataset.px);
+    el.classList.toggle("out", ch === "remove");
+    el.querySelectorAll("[data-pick]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === ch));
+  });
+  buildPlan(); renderTidy();
+}
+function pick(x, v){
+  const it = R.items;
+  if (v === "remove") {
+    // a group keeps at least one file, unless an old photo from history stays in it anyway (and is still on disk)
+    const lonely = VIEW.some(({g}) => g.length > 1 && g.includes(x) && !g.some(y => !it[y].new && it[y].exists !== false) && g.every(y => y === x || choiceOf(y) === "remove"));
+    if (lonely) { NOTE = tr("В группе должен остаться хотя бы один файл. Сначала отметьте «Оставить» у другого фото"); return renderTidy(); }
+  }
+  setChoices({[x]: v});
+}
+function renderTidy(){
+  const box = $("#tidy"); if (!box) return;
+  const it = R.items, dup = CFG.dupDir || "_дубли";
+  const bytes = PLAN.reduce((s, f) => s + (it.find(x => x.paths.includes(f.path))?.bytes || 0), 0);
+  const extra = PLAN.filter(f => !f.forget).length;
+  const kept = new Set(VIEW.filter(v => v.g.length > 1).flatMap(v => v.g).filter(k => it[k].new && choiceOf(k) === "keep")).size;
+  let h = `<div class="tidyrow"><p class="tidysum">`;
+  h += PLAN.length ? t`Оставляем ${plural(kept, "файл", "файла", "файлов")}, переносим ${plural(PLAN.length, "файл", "файла", "файлов")} (${mb(bytes)}) в папку «${esc(dup)}»` + (extra ? t`. Из них ${plural(extra, "одинаковый файл", "одинаковых файла", "одинаковых файлов")} в других местах` : "") + tr(". Ничего не удаляется")
+    : t`Отметьте «Убрать» у фото, которые не нужны. Они переместятся в папку «${esc(dup)}» внутри проверенной папки`;
+  h += `</p><div class="row" id="tidyAct">${PLAN.length ? `<button class="btn" id="tidyGo">${t`Переместить в «${esc(dup)}»`}</button>` : ""}</div></div>`;
+  if (NOTE) h += `<p class="err">${esc(NOTE)}</p>`;
+  if (R.last_move) h += `<p class="done">${t`Последний перенос ${esc(fmtDate(R.last_move.at))}: ${plural(R.last_move.files, "файл", "файла", "файлов")}. `}<button class="linkbtn" id="tidyUndo">${tr("Вернуть их на место")}</button></p>`;
+  if (MOVE_MSG) h += `<p class="done">${MOVE_MSG()}</p>`;
+  NOTE = "";
+  box.className = "tidy"; box.innerHTML = h;
+  $("#tidyGo") && ($("#tidyGo").onclick = () => {
+    $("#tidyAct").innerHTML = `<span>${t`Переместить ${plural(PLAN.length, "файл", "файла", "файлов")} в ${esc(R.root)}/${esc(dup)}?`}</span><button class="btn" id="tidyYes">${tr("Да, переместить")}</button><button class="linkbtn" id="tidyNo">${tr("Отмена")}</button>`;
+    $("#tidyNo").onclick = renderTidy;
+    $("#tidyYes").onclick = async () => {
+      $("#tidyAct").innerHTML = `<span>${tr("Переношу…")}</span>`;
+      const r = await post("/api/move", {root: R.root, files: PLAN, dup_dir: dup});
+      // a function, so the message follows a language switch
+      if (r.error) { MOVE_MSG = () => `<span class="err">${t`Не получилось: ${esc(r.error)}`}</span>`; return renderTidy(); }
+      MOVE_MSG = () => t`Перенесено в ${esc(r.dup_dir)}: ${plural(r.moved, "файл", "файла", "файлов")} (${mb(r.bytes)}).` + (r.failed.length ? ` <span class="err">${t`Не удалось: ${r.failed.length}.`}</span>` : "");
+      runDir(R.root);
+    };
+  });
+  $("#tidyUndo") && ($("#tidyUndo").onclick = async () => {
+    const r = await post("/api/move/undo", {move_id: R.last_move.id});
+    if (r.error) { MOVE_MSG = () => `<span class="err">${t`Не получилось: ${esc(r.error)}`}</span>`; return renderTidy(); }
+    MOVE_MSG = () => t`Возвращено на место: ${plural(r.returned, "файл", "файла", "файлов")}.` + (r.failed.length ? ` <span class="err">${t`Не удалось вернуть: ${r.failed.length} (на старом месте уже лежит файл).`}</span>` : "");
+    runDir(R.root);
+  });
+}
+
+/* ---------- a person's verdict: "not a duplicate" is remembered and hidden next time ---------- */
+async function review(pairs, verdict){
+  const r = await post("/api/review", {pairs, verdict});
+  if (r.error) { $("#status").innerHTML = `<span class="err">${esc(r.error)}</span>`; return; }
+  pairs.forEach(([a, b]) => { if (verdict) R.reviews[pairKey(a, b)] = verdict; else delete R.reviews[pairKey(a, b)]; });
+  renderResult();
+}
+
+/* ---------- large view ---------- */
+function openViewer(gi, startX){
+  const v = VIEW[gi]; if (!v || !R) return;
+  const it = R.items, g = v.g, canKeep = !!R.root && g.length > 1;
+  $("#viewerTitle").textContent = plural(g.length, "фото", "фото", "фото") + (g.length > 1 ? tr(" в группе") : "");
+  $("#viewerBody").innerHTML = g.map(x => `<figure data-x="${x}"><img src="${img(it[x].path, 1100)}" alt="${esc(it[x].name)}"><figcaption>${esc(it[x].rel || it[x].name)}, ${it[x].w}×${it[x].h}${it[x].bytes ? ", " + mb(it[x].bytes) : ""}${it[x].captured ? t`, снято ${esc(fmtDate(capDate(it[x].captured) || it[x].captured))}` : ""}${it[x].new ? "" : t`, из истории, загружено ${esc(fmtDate(it[x].at))}`}</figcaption>
+    ${canKeep && it[x].new ? `<button class="btn quiet keepbtn" data-keep="${x}">${tr("Оставить только этот")}</button>` : ""}</figure>`).join("");
+  $("#viewer").showModal();
+  const mark = () => $("#viewerBody").querySelectorAll("[data-keep]").forEach(o => {
+    const only = choiceOf(+o.dataset.keep) === "keep" && g.every(y => y === +o.dataset.keep || !it[y].new || choiceOf(y) === "remove");
+    o.textContent = tr(only ? "Оставляем только этот" : "Оставить только этот"); o.disabled = only; });
+  $("#viewerBody").querySelectorAll("[data-keep]").forEach(b => b.onclick = () => {
+    const k = +b.dataset.keep, m = {[k]: "keep"};
+    g.forEach(y => { if (y !== k && it[y].new) m[y] = "remove"; });
+    setChoices(m); mark();
+  });
+  mark();
+  if (startX != null) $(`#viewerBody figure[data-x="${startX}"]`)?.scrollIntoView({inline:"start", block:"nearest"});
+}
+$("#viewerClose").onclick = () => $("#viewer").close();
+$("#viewer").addEventListener("click", e => { if (e.target === $("#viewer")) $("#viewer").close(); });
+$("#result").addEventListener("click", e => {
+  const f = e.target.closest(".jump [data-f]");
+  if (f) {
+    FILTER = f.dataset.f; applyFilter();
+    const first = $("#result section.rs:not([hidden])"); if (first && first.getBoundingClientRect().top < 0) first.scrollIntoView({block: "start"});
+    return;
+  }
+  if (e.target.closest("[data-goprofiles]")) return $("#goProfiles").click();
+  const pk = e.target.closest("[data-pick]"); if (pk) return pick(+pk.dataset.pick, pk.dataset.v);
+  const o = e.target.closest("[data-open]"); if (o) return openViewer(+o.dataset.open);
+  const nd = e.target.closest("[data-notdup]");
+  if (nd) {
+    const v = VIEW[+nd.dataset.notdup], it = R.items;
+    const ps = R.candidates.filter(c => v.g.includes(c.i) && v.g.includes(c.j) && decide(c)[0]).map(c => [it[c.i].sha, it[c.j].sha]);
+    LAST_REVIEW = ps;
+    review(ps, "not_dup").then(() => { $("#status").innerHTML = `${tr("Отмечено «не дубль». Эта пара больше не появится.")} <button class="linkbtn" id="undoReview">${tr("Отменить")}</button>`;
+      $("#undoReview").onclick = () => { review(LAST_REVIEW, null); $("#status").textContent = ""; }; });
+    return;
+  }
+  const ur = e.target.closest("[data-unreview]"); if (ur) return review([ur.dataset.unreview.split("|")], null);
+  const sl = e.target.closest(".slide[data-g]"); if (sl) openViewer(+sl.dataset.g, +sl.dataset.x);
+});
+
+/* ---------- start: presets from the server, then whatever the address asks for ---------- */
+(async () => {
+  try { SAVED = (await getJSON("/api/presets")).presets || []; } catch { SAVED = []; }
+  const q = new URLSearchParams(location.search);
+  CUR = null; applyPreset(store.get("preset") || BUILTIN[0].id);
+  // a link with ?dir= or ?batch= opens that check once; the address is cleaned, so a reload starts with an empty screen
+  if (q.has("dir") || q.has("batch")) history.replaceState(null, "", location.pathname + (q.get("lang") ? "?lang=" + encodeURIComponent(q.get("lang")) : "") + location.hash);
+  if (q.get("dir")) { $("#dirPath").value = q.get("dir"); runDir(q.get("dir")); }
+  else if (q.get("batch")) rescan(q.get("batch"));
+})();
+
+/* ---------- lab ---------- */
+const LC = [["crop","Кроп по центру, % площади",0,90,0],["edge","Срез с правого края, %",0,60,0],["rotate","Поворот, градусов",-30,30,0],
+  ["tilt","Наклон (другой ракурс)",0,30,0],["bright","Яркость, %",-60,60,0],["scale","Размер, %",5,100,100],["jpeg","Качество JPEG",2,95,92]];
+let L = {}, labPath = null, labRes = null, labTimer = null, samplesLoaded = false;
+function renderLabCtl(){
+  LC.forEach(([k,,,,v]) => L[k] = v);
+  $("#labCtl").innerHTML = LC.map(([k,l,mi,ma,v]) => `<div class="ctl"><label for="l-${k}">${tr(l)} <output id="lo-${k}">${v}</output></label><input type="range" id="l-${k}" min="${mi}" max="${ma}" value="${v}"></div>`).join("");
+  LC.forEach(([k]) => $("#l-"+k).oninput = e => { L[k] = +e.target.value; $("#lo-"+k).textContent = L[k]; queueLab(); });
+}
+renderLabCtl();
+$("#mirror").onchange = queueLab; $("#text").oninput = queueLab;
+$("#labReset").onclick = () => { renderLabCtl(); $("#mirror").checked = false; $("#text").value = ""; queueLab(); };
+
+async function loadSamples(){
+  if (samplesLoaded) return;
+  const r = await getJSON("/api/samples");
+  samplesLoaded = true;
+  if (!r.files.length) { $("#pick").innerHTML = `<p class="empty">${tr("Сначала проверьте пачку на первой вкладке — её фото появятся здесь.")}</p>`; return; }
+  $("#pick").innerHTML = r.files.map(f => `<button aria-pressed="false" data-path="${esc(f.path)}" title="${esc(f.name)}"><img src="${img(f.path,160)}" alt="${esc(f.name)}" loading="lazy"></button>`).join("");
+  $("#pick").querySelectorAll("button").forEach(b => b.onclick = () => {
+    $("#pick").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    labPath = b.dataset.path; queueLab();
+  });
+}
+{ const q = new URLSearchParams(location.search), ph = q.get("photo");
+  if (ph) { labPath = ph; LC.forEach(([k]) => { if (q.has(k)) { L[k] = +q.get(k); $("#l-"+k).value = L[k]; $("#lo-"+k).textContent = L[k]; } });
+    if (q.get("mirror") === "1") $("#mirror").checked = true; if (q.get("text")) $("#text").value = q.get("text"); setTimeout(runLab, 0); } }
+function queueLab(){ clearTimeout(labTimer); labTimer = setTimeout(runLab, 250); }
+// the previous result stays on screen (dimmed) while the next one is computed, so the page height never collapses
+let labSeq = 0;
+async function runLab(){
+  if (!labPath) return;
+  const seq = ++labSeq;
+  if ($("#labOut").children.length) $("#labOut").classList.add("busy"); else $("#labOut").innerHTML = `<p class="status">${tr("Считаю…")}</p>`;
+  $("#labPair").classList.add("busy");
+  const ops = {...L, mirror: $("#mirror").checked, text: $("#text").value};
+  const r = await post("/api/lab", {path: labPath, ops});
+  if (seq !== labSeq) return;  // a newer slider move is already on its way
+  $("#labOut").classList.remove("busy"); $("#labPair").classList.remove("busy");
+  if (r.error) { $("#labOut").innerHTML = `<p class="err">${esc(r.error)}</p>`; return; }
+  labRes = r; renderLab();
+}
+function meter(label, val, max, thr, higherBetter, note){
+  const pct = Math.max(0, Math.min(1, val / max)) * 100, tp = thr / max * 100;
+  const hit = higherBetter ? val >= thr : val <= thr;
+  return `<div class="meter"><div class="lbl"><span>${label}</span><b>${val}</b></div>
+    <div class="bar"><i class="${hit?"hit":""}" style="width:${pct}%"></i><b style="left:${tp}%"></b></div><small>${note}</small></div>`;
+}
+function renderLab(){
+  if (!labRes || !labPath) return;
+  const r = labRes, c = r.candidate, [v, why] = decide({...c, different_shot:false});
+  const pair = $("#labPair");
+  // build the two frames once per photo; afterwards only the changed picture and its caption are swapped
+  if (pair.dataset.path !== labPath) {
+    pair.dataset.path = labPath;
+    pair.innerHTML = `<div class="slide"><img src="${img(labPath,640)}" alt="${tr("Исходное фото")}"><div class="cap">${tr("исходное")}</div></div>
+      <div class="slide"><img id="labVar" alt="${tr("Изменённое фото")}"><div class="cap" id="labVarCap"></div></div>`;
+  }
+  $("#labVar").src = r.variant;
+  $("#labVarCap").textContent = t`изменённое: ${r.size[0]}×${r.size[1]}, ${r.file_kb} КБ`;
+  if (v) mark($("#labPair"), v); else { delete $("#labPair").dataset.kind; }
+  $("#labOut").innerHTML = `<div class="verdict ${v?"v-"+v:""}">${v ? vn(v) : tr("не дубль")}</div><p class="lead" style="margin:0">${v ? tr("Решило: ") + esc(rsn(why)) : tr("Ни один метод не дотянул до порога.")}</p>
+    ${meter(tr("Нейросеть SSCD, сходство"), c.sscd.toFixed(3), 1, T.sscd_copy, true, t`Красная черта — порог копии ${T.sscd_copy}. Разные фото обычно ниже 0.3`)}
+    ${meter(tr("Хэш PDQ, отличающихся бит"), c.pdq, 128, T.pdq_max, false, t`С учётом поворотов на 90° и зеркала. Без них: ${r.pdq_plain}. Порог ${T.pdq_max}, у разных фото около 128`)}
+    ${meter(tr("Совпавшие точки ORB"), c.orb, 300, T.orb_min, true, t`Порог ${T.orb_min}. У случайных пар в тестах было до 12`)}
+    <p class="why">${t`Время на изменённое фото: декод ${r.timing_ms.decode} мс, хэши ${r.timing_ms.hashes} мс, нейросеть ${r.timing_ms.sscd} мс, точки ${r.timing_ms.orb} мс`}</p>`;
+}
+
+/* ---------- history ---------- */
+async function loadHistory(){
+  const r = await getJSON("/api/history");
+  if (!r.photos.length) { $("#hist").innerHTML = `<p class="empty">${tr("История пуста. Отметьте «Запомнить в истории» при проверке пачки.")}</p>`; return; }
+  const byBatch = {};
+  r.photos.forEach(p => (byBatch[p.batch] ??= []).push(p));
+  $("#hist").innerHTML = `<div class="summary"><div><b>${r.photos.length}</b><span>${tr("фото в истории")}</span></div><div><b>${(r.db_bytes/1048576).toFixed(1)} ${tr("МБ")}</b><span>${tr("база с отпечатками")}</span></div></div>
+    <div class="row"><button class="btn quiet" id="clear">${tr("Очистить историю")}</button><span id="clearAsk"></span></div>` +
+    Object.entries(byBatch).map(([b, ps]) => `<h3>${t`Пачка от ${esc(ps[0].at.replace("T"," ").slice(0,16))}, ${ps.length} фото`}</h3>
+    <div class="thumbs">${ps.map(p => `<figure><img src="${img(p.path,200)}" alt="" loading="lazy"><figcaption title="${esc(p.name)}">${esc(p.name)}</figcaption></figure>`).join("")}</div>`).join("");
+  $("#clear").onclick = () => {
+    $("#clearAsk").innerHTML = `${tr("Удалить все отпечатки и загруженные фото?")} <button class="btn" id="clearYes">${tr("Удалить")}</button> <button class="btn quiet" id="clearNo">${tr("Оставить")}</button>`;
+    $("#clearNo").onclick = () => $("#clearAsk").innerHTML = "";
+    $("#clearYes").onclick = async () => { await post("/api/history/clear"); samplesLoaded = false; loadHistory(); };
+  };
+}
+
+/* ---------- tests ---------- */
+const KN = {crop10c:"кроп 10% площади",crop20c:"кроп 20%",crop30c:"кроп 30%",crop40c:"кроп 40%",crop50c:"кроп 50%",crop60c:"кроп 60%",crop70c:"кроп 70%",crop80c:"кроп 80%",
+  crop10edge:"срез с края 10%",crop20edge:"срез с края 20%",crop40edge:"срез с края 40%",mirror:"зеркало",strong:"сильные правки INRIA",
+  jpeg3:"¼ размера + JPEG 3",jpeg5:"¼ + JPEG 5",jpeg8:"¼ + JPEG 8",jpeg10:"¼ + JPEG 10",jpeg15:"¼ + JPEG 15",jpeg20:"¼ + JPEG 20",jpeg30:"¼ + JPEG 30",jpeg50:"¼ + JPEG 50",jpeg75:"¼ + JPEG 75"};
+const order = k => Object.keys(KN).indexOf(k);
+async function loadTests(){
+  const r = await getJSON("/api/tests");
+  if (!r.reports.length) { $("#testsOut").innerHTML = `<p class="empty">${tr("Отчётов нет. Запустите eval/run_copydays.py и укажите путь в DEDUP_TEST_REPORTS.")}</p>`; return; }
+  $("#testsOut").innerHTML = r.reports.map(({name, report: p}) => {
+    const a = p.attacks || {}, by = a.found_own_original_by_kind || {};
+    let h = `<h2>${t`Copydays: ${esc(a.found_total || "")} изменённых копий нашли свой оригинал`}</h2>
+      <table class="t"><tr><th>${tr("Что сделали с фото")}</th><th>${tr("Нашлось")}</th><th></th></tr>${Object.entries(by).sort((x,y)=>order(x[0])-order(y[0])).map(([k,v]) => {
+        const [f,n] = v.split("/").map(Number); return `<tr><td>${KN[k] ? tr(KN[k]) : esc(k)}</td><td>${v}</td><td style="width:40%"><span class="hbar" style="width:${Math.round(f/n*100)}%"></span></td></tr>`; }).join("")}</table>
+      <p>${tr("Ложных «копий» между разными фото:")} <b>${a["copy_pairs_different_group(FP)"] ?? "–"}</b>. ${tr("Повторный прогон:")} ${p.rescan ? t`${p.rescan.seen_before} из ${p.rescan.files} узнаны без пересчёта за ${p.rescan.timing_s.total} с` : "–"}. ${tr("Окно 7 дней: совпадений со старыми фото")} ${p.window ? p.window["pairs_with_8_day_old_originals(should be 0)"] : "–"}.</p>`;
+    if (a.fp_examples?.length) h += `<h3>${tr("Ложные копии")}</h3>${a.fp_examples.map(x => `<div class="group" data-kind="copy"><div class="strip"><div class="slide"><img src="${img(x.a)}" alt=""><div class="cap">${esc(x.a.split("/").pop())}</div></div><div class="slide"><img src="${img(x.b)}" alt=""><div class="cap">${esc(x.b.split("/").pop())}</div></div></div><div class="why">${t`SSCD ${x.sscd}, PDQ ${x.pdq}, точек ${x.orb}: ${esc(x.reason)}`}</div></div>`).join("")}`;
+    const mp = a.missed_paths || {};
+    const keys = Object.keys(mp).filter(k => mp[k].length).sort((x,y)=>order(x)-order(y));
+    if (keys.length) h += `<h3>${tr("Что пропущено")}</h3>` + keys.map(k => `<p>${KN[k] ? tr(KN[k]) : esc(k)}</p><div class="thumbs">${mp[k].slice(0,8).map(pth => `<figure><img src="${img(pth,200)}" alt="" loading="lazy"><figcaption>${esc(pth.split("/").pop())}</figcaption></figure>`).join("")}</div>`).join("");
+    if (p.holidays) { const hv = p.holidays.verdicts || {};
+      h += `<h2>${t`Holidays: ${p.holidays.files} фото, ${p.holidays.same_scene_pairs_total} пар «одна сцена»`}</h2>
+      <table class="t"><tr><th>${tr("Решение")}</th><th>${tr("Одна сцена")}</th><th>${tr("Разные сцены")}</th></tr>
+      ${["copy","similar"].map(v => `<tr><td>${vn(v)}</td><td>${hv[v+"/same"]||0}</td><td>${hv[v+"/diff"]||0}</td></tr>`).join("")}</table>`; }
+    return h;
+  }).join("");
+  requestAnimationFrame(() => document.querySelectorAll("#testsOut .group").forEach(g => mark(g, g.dataset.kind)));
+}
+{ const t = location.hash.slice(1); const b = document.querySelector(`nav button[data-tab="${t}"]`); if (b) b.click(); }
+if (/Win/.test(navigator.platform)) $("#dirPath").placeholder = "C:\\Users\\имя\\Pictures\\Архив";
+$("#quitApp").onclick = async () => {
+  if (!confirm(tr("Выключить программу? Чтобы снова проверять фото, её нужно будет запустить заново."))) return;
+  try { await post("/api/quit"); } catch (e) {}
+  document.querySelector("main").innerHTML = `<p class="lead" style="padding:48px 0">${tr("Программа выключена. Эту вкладку можно закрыть.")}</p>`;
+  $("#quitApp").hidden = true;
+};
+
+/* ---------- RU | EN switch: static text is looked up again, everything drawn by the script is drawn again ---------- */
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.title = "Duplicate Photo Finder";
+  document.querySelectorAll(".langsw [data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === LANG));
+  trDom();
+}
+function setLang(l){
+  if (l === LANG) return;
+  LANG = l; store.set("lang", l);
+  applyLang();
+  renderPresetUI(); renderResult(); syncPathBtn();
+  if (DRAFT) { fillEditor(); renderProfiles(); }
+  LC.forEach(([k, l]) => { const lab = document.querySelector(`label[for="l-${k}"]`); if (lab?.firstChild) lab.firstChild.data = tr(l) + " "; });
+  delete $("#labPair").dataset.path; renderLab();
+  if (!$("#tab-history").hidden) loadHistory();
+  if (!$("#tab-tests").hidden) loadTests();
+  if ($("#pick .empty")) { samplesLoaded = false; if (!$("#tab-lab").hidden) loadSamples(); }
+  trDom();  // a status line or message set before the switch
+}
+document.querySelectorAll(".langsw [data-lang]").forEach(b => b.onclick = () => setLang(b.dataset.lang));
+applyLang();
+</script>
+</body>
+</html>

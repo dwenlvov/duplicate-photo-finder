@@ -1,0 +1,20 @@
+# Only what is listed below goes into the repository. Everything else in this folder stays private:
+# data/ (checked photos and history), samples/, reports/, experiments/, research_notes/, eval/, dist/, .venv/ ...
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/README.en.md
+!/VERSION
+!/builds/
+!/docs/
+!/LICENSE
+!/THIRD_PARTY_NOTICES.md
+!/requirements.txt
+!/dedup/
+!/packaging/
+# build leftovers inside the allowed folders
+__pycache__/
+*.pyc
+/packaging/.*
+.DS_Store
