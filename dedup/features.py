@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -170,6 +171,14 @@ def in_library(path: str) -> bool:
     return any(part.lower().endswith(LIBRARY_EXT) for part in Path(path).parts)
 
 
+# album covers that music players (Windows Media Player and others) put next to songs: pictures, not photos
+_COVER = re.compile(r"(folder|albumartsmall|albumart_\{?[0-9a-f-]{36}\}?_(large|small))\.jpe?g", re.I)
+
+
+def is_cover(name: str) -> bool:
+    return bool(_COVER.fullmatch(os.path.basename(name)))
+
+
 def list_images(folder: str) -> list[str]:
     out = []
     for root, dirs, files in os.walk(folder):
@@ -177,7 +186,7 @@ def list_images(folder: str) -> list[str]:
         dirs[:] = [d for d in dirs if not d.startswith(".") and d != DUP_DIR and not d.lower().endswith(LIBRARY_EXT)
                    and not os.path.exists(os.path.join(root, d, DUP_MARK))]
         for f in files:
-            if Path(f).suffix.lower() in IMAGE_EXT and not f.startswith("."):
+            if Path(f).suffix.lower() in IMAGE_EXT and not f.startswith(".") and not is_cover(f):
                 out.append(os.path.join(root, f))
     return sorted(out)
 

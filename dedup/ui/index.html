@@ -38,13 +38,24 @@ main{max-width:1320px;margin:0 auto;padding:16px 24px 64px}
 @media (max-width:900px){.cols{grid-template-columns:1fr}.panel{position:static!important;max-height:none}}
 @media (max-width:600px){header,main{padding-left:16px;padding-right:16px}.slide{width:146px}.slide img{width:130px;height:98px}.group{padding:14px 10px 10px}}
 .drop{border:2px dashed var(--rule);border-radius:10px;padding:28px;text-align:center;background:color-mix(in srgb,var(--mount) 45%,transparent)}
-.drop.over{border-color:var(--similar)}
 .drop p{margin:0 0 12px}
 .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .btn{background:var(--ink);color:var(--table);border:0;border-radius:6px;padding:9px 16px;cursor:pointer;font-weight:500}
 .btn.quiet{background:transparent;color:var(--ink);border:1px solid var(--rule)}
 .btn:disabled{opacity:.45;cursor:default}
 .status{color:var(--graphite);min-height:1.5em;margin:12px 0}
+.progress p{margin:0 0 8px;color:var(--ink);font-variant-numeric:tabular-nums}
+.progress ol{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.progress li{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline}
+.progress li.next{opacity:.55}
+.progress li.now{color:var(--ink);font-weight:600}
+.progress .mark{width:1em;flex:none;text-align:center}
+.progress li.done .mark::before{content:"✓"}
+.progress li.now .mark::before{content:"●";display:inline-block;animation:busy 1.2s ease-in-out infinite}
+.progress li.next .mark::before{content:"○"}
+.progress .pnum{font-weight:400;color:var(--graphite);font-variant-numeric:tabular-nums}
+@keyframes busy{50%{opacity:.2}}
+@media (prefers-reduced-motion:reduce){.progress li.now .mark::before{animation:none}}
 .summary{display:flex;flex-wrap:wrap;gap:8px 28px;margin:8px 0 24px}
 .summary b{font-size:1.75rem;font-weight:600;display:block;line-height:1.1}
 .summary span{color:var(--graphite);font-size:.875rem}
@@ -241,15 +252,14 @@ dialog.viewer::backdrop{background:rgba(18,21,24,.72)}
   <div class="cols">
     <div>
       <div class="drop" id="drop">
-        <p id="dropText">Перетащите сюда фото или целую папку</p>
+        <p id="dropText">Выберите папку с фото</p>
         <div class="row" id="dropRow" style="justify-content:center">
+          <button class="btn" type="button" id="pickDir">Выбрать папку</button>
           <label class="btn quiet" for="files">Выбрать файлы</label>
           <input id="files" type="file" accept="image/*,.heic,.heif" multiple hidden>
-          <button class="btn quiet" type="button" id="pickDir">Выбрать папку</button>
-          <input id="folder" type="file" webkitdirectory multiple hidden>
         </div>
         <form class="pathrow" id="pathForm">
-          <label for="dirPath">Или впишите путь к папке на этом компьютере. Только так можно выбрать, какие фото оставить, и перенести остальные. Для большого архива это ещё и быстрее: фото не копируются в браузер</label>
+          <label for="dirPath">Или впишите путь к папке на этом компьютере. Папку программа проверяет на месте, ничего не копируя, и потом может перенести лишние фото. Фото из кнопки «Выбрать файлы» она только показывает</label>
           <div class="row"><input id="dirPath" type="text" placeholder="/Users/имя/Pictures/Архив" autocomplete="off" spellcheck="false">
           <button class="btn" type="submit" id="pathGo" hidden>Проверить эту папку</button></div>
         </form>
@@ -361,9 +371,9 @@ const EN = {
   "Язык": "Language",
   "Проверка пачки": "Check a batch", "Профили": "Profiles", "Лаборатория": "Lab", "История": "History", "Результаты тестов": "Test results",
   "Остановить программу на этом компьютере": "Stop the program on this computer", "Выключить": "Shut down",
-  "Перетащите сюда фото или целую папку": "Drop photos or a whole folder here", "Выбрать файлы": "Choose files", "Выбрать папку": "Choose folder",
-  "Или впишите путь к папке на этом компьютере. Только так можно выбрать, какие фото оставить, и перенести остальные. Для большого архива это ещё и быстрее: фото не копируются в браузер":
-    "Or type the path to a folder on this computer. Only then can you choose which photos to keep and move the rest. For a large archive it is also faster: photos are not copied into the browser",
+  "Выберите папку с фото": "Choose a folder of photos", "Выбрать файлы": "Choose files", "Выбрать папку": "Choose folder",
+  "Или впишите путь к папке на этом компьютере. Папку программа проверяет на месте, ничего не копируя, и потом может перенести лишние фото. Фото из кнопки «Выбрать файлы» она только показывает":
+    "Or type the path to a folder on this computer. The program checks a folder where it is, copying nothing, and can then move the extra photos. Photos from the “Choose files” button it only shows",
   "/Users/имя/Pictures/Архив": "/Users/name/Pictures/Archive", "C:\\Users\\имя\\Pictures\\Архив": "C:\\Users\\name\\Pictures\\Archive",
   "Проверить эту папку": "Check this folder", "Проверить ещё раз": "Check again",
   "Профиль проверки": "Profile for checks", "Что делает этот профиль": "What this profile does", "Настроить профили": "Set up profiles",
@@ -462,6 +472,19 @@ const EN = {
   "Проверяю, не пересняты ли новые фото со старых: {0} из {1}": "Checking whether new photos were re-shot from old ones: {0} of {1}",
   "Проверяю, нет ли среди копий серий снимков: {0} из {1}": "Checking the copies for bursts: {0} of {1}",
   "меньше секунды": "less than a second", "МБ": "MB", "КБ": "KB",
+  "Перетаскивать сюда нельзя: нажмите «Выбрать папку». Так программа проверит фото на месте и сможет перенести лишние":
+    "Nothing can be dropped here: press “Choose folder”. Then the program checks the photos where they are and can move the extra ones",
+  "Окно выбора папки не открылось: {0}. Впишите путь к папке в поле ниже": "The folder picker did not open: {0}. Type the path to the folder in the field below",
+  "Не удалось загрузить {0}: {1}. Проверка остановлена": "Could not upload {0}: {1}. The check has stopped",
+  "Программа не отвечает. Возможно, её выключили: запустите её снова и повторите проверку": "The program is not answering. It may have been shut down: start it again and repeat the check",
+  "Идёт проверка: {0}": "Checking: {0}", "{0} с": "{0} s", "{0} мин {1} с": "{0} min {1} s", "{0} из {1}": "{0} of {1}",
+  "Загрузка фото в программу": "Uploading photos to the program", "Поиск фото в папке": "Finding photos in the folder",
+  "Чтение файлов": "Reading files", "Разбор новых фото": "Analysing new photos", "Сравнение фото между собой": "Comparing photos with each other",
+  "Поиск серий снимков среди копий": "Looking for bursts among the copies",
+  "Проверка, не пересняты ли новые фото со старых": "Checking whether new photos were re-shot from old ones",
+  "Подготовка результата": "Preparing the result",
+  "Не получилось выключить программу: {0}. Выключите её через значок программы у часов": "Could not shut the program down: {0}. Shut it down from the program's icon by the clock",
+  "нет ответа": "no answer",
   // result
   "Что сделать с файлом": "What to do with the file", "Убрать": "Remove", "Открыть крупно": "Open large",
   "из истории, лучше": "from history, better", "из истории": "from history", "лучший файл": "best file", "оставить": "keep", "загружено {0}": "uploaded {0}",
@@ -496,7 +519,7 @@ const EN = {
   "Открыть профиль": "Open profile", "Вы отметили «не дубль», поэтому скрыто: {0}": "Hidden because you marked them “not a duplicate”: {0}", "Вернуть": "Restore",
   "Почти совпали, но копией не признаны: {0}. Обычно это разные фото": "Near matches not counted as copies: {0}. Usually these are different photos",
   "SSCD {0}, PDQ {1}, одинаковых деталей {2}": "SSCD {0}, PDQ {1}, matching details {2}", "сходство {0}%": "similarity {0}%",
-  "Уже проверялись раньше: {0}": "Checked before: {0}", "Ещё": "More", "Новая пачка: перетащите фото или папку": "New batch: drop photos or a folder",
+  "Уже проверялись раньше: {0}": "Checked before: {0}", "Ещё": "More", "Новая проверка: выберите папку": "New check: choose a folder",
   "В группе должен остаться хотя бы один файл. Сначала отметьте «Оставить» у другого фото": "At least one file must stay in a group. First mark another photo “Keep”",
   // moving files
   "Оставляем {0}, переносим {1} ({2}) в папку «{3}»": "Keeping {0}, moving {1} ({2}) into the «{3}» folder",
@@ -608,7 +631,7 @@ const post = (url, body, raw) => fetch(url, {method:"POST", headers:{"X-Dedup":"
   body: raw ? body : JSON.stringify(body ?? {})}).then(x => x.json());
 const getJSON = url => fetch(url, {headers:{"X-Lang":LANG}}).then(x => x.json());
 const sleep = ms => new Promise(ok => setTimeout(ok, ms));
-const store = {get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} }};
+const store = {get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} }, del(k){ try { localStorage.removeItem(k); } catch {} }};
 
 /* ---------- thresholds ---------- */
 const DEF = {sscd_copy:.75, sscd_geom:.60, sscd_cand:.33, pdq_max:31, orb_min:13, hist_orb:250};
@@ -791,37 +814,23 @@ function mark(el, kind){ el.dataset.kind = kind; }
 let R = null;
 const drop = $("#drop");
 // Accept drops anywhere on the page, so a near-miss does not make the browser open the photo instead.
-["dragenter","dragover"].forEach(e => window.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("over"); }));
-window.addEventListener("dragleave", ev => { if (!ev.relatedTarget) drop.classList.remove("over"); });
-window.addEventListener("drop", async ev => {
-  ev.preventDefault(); drop.classList.remove("over");
+// nothing is dropped onto the page: a dropped folder would be copied into the program photo by photo.
+// The drop is still caught, or the browser would open the dropped photo in place of the page.
+["dragenter", "dragover"].forEach(e => window.addEventListener(e, ev => ev.preventDefault()));
+window.addEventListener("drop", ev => {
+  ev.preventDefault();
   document.querySelector('nav button[data-tab="check"]').click();
-  $("#status").textContent = tr("Читаю, что перетащили…");
-  run(await droppedFiles(ev.dataTransfer));
+  $("#status").textContent = tr("Перетаскивать сюда нельзя: нажмите «Выбрать папку». Так программа проверит фото на месте и сможет перенести лишние");
 });
-async function droppedFiles(dt){
-  const entries = [...(dt.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
-  if (!entries.length) return [...dt.files];
-  const out = [];
-  async function walk(en){
-    if (en.isFile) { const f = await new Promise((ok, no) => en.file(ok, no)); f.relPath = en.fullPath.replace(/^\//, ""); out.push(f); return; }
-    const rd = en.createReader();
-    for (;;) { const batch = await new Promise((ok, no) => rd.readEntries(ok, no)); if (!batch.length) break; for (const e of batch) await walk(e); }
-  }
-  for (const en of entries) await walk(en);
-  return out;
-}
 $("#files").onchange = e => run([...e.target.files]);
-$("#folder").onchange = e => run([...e.target.files]);
 // "Выбрать папку" opens the system folder chooser through the page server: then the real path is known,
-// the folder is checked in place and extra files can be moved. Without it (not a Mac) the browser upload is used.
+// the folder is checked in place and extra files can be moved. A browser would only hand over copies.
 $("#pickDir").onclick = async () => {
   $("#status").textContent = tr("Открываю окно выбора папки. Если его не видно, оно может быть за окном браузера");
   let r;
   try { r = await post("/api/choose_folder"); } catch (e) { r = {error: String(e)}; }
   if (r.path) { $("#dirPath").value = r.path; return runDir(r.path); }
-  $("#status").textContent = "";
-  if (r.error) $("#folder").click();
+  $("#status").textContent = r.error ? t`Окно выбора папки не открылось: ${r.error}. Впишите путь к папке в поле ниже` : "";
 };
 $("#pathForm").onsubmit = e => { e.preventDefault(); const v = $("#dirPath").value.trim(); if (v) runDir(v); };
 // the button is needed only for a typed path or to check the folder on screen again; "Выбрать папку" starts the check itself
@@ -837,52 +846,99 @@ function showResult(r){
   if (r.error) { $("#status").innerHTML = `<span class="err">${t`Ошибка: ${esc(r.error)}`}</span>`; return false; }
   R = r; SEL = {...(r.choices || {})}; $("#status").textContent = ""; renderResult(); syncPathBtn(); return true;
 }
+// album covers that music players put next to songs (Folder.jpg, AlbumArt_{…}_Large.jpg): pictures, not photos
+const COVER = /^(folder|albumartsmall|albumart_\{?[0-9a-f-]{36}\}?_(large|small))\.jpe?g$/i;
 async function run(files){
   const total = files.length;
-  files = files.filter(f => /\.(jpe?g|png|webp|heic|heif|tiff?|bmp)$/i.test(f.name) && !f.name.startsWith("."));
+  files = files.filter(f => /\.(jpe?g|png|webp|heic|heif|tiff?|bmp)$/i.test(f.name) && !f.name.startsWith(".") && !COVER.test(f.name));
   if (!files.length) { $("#status").textContent = total ? t`Получено файлов: ${total}, но среди них нет фото. Подходят JPEG, PNG, WebP, HEIC, TIFF.` : tr("Браузер не передал файлы. Попробуйте кнопку «Выбрать папку» или «Выбрать файлы»."); return; }
-  const batch = "b" + Date.now();
+  const my = ++JOB, batch = "b" + Date.now();
+  progressStart(UP_STAGES);
   let k = 0;
   for (const f of files) {
-    $("#status").textContent = t`Загружаю ${++k} из ${files.length}`;
-    const rel = f.relPath || f.webkitRelativePath || f.name;
-    await post(`/api/upload?batch=${batch}&name=${encodeURIComponent(rel.split("/").join("__"))}`, f, true);
+    drawProgress("upload", k++, files.length);
+    let r;
+    try { r = await post(`/api/upload?batch=${batch}&name=${encodeURIComponent(f.name)}`, f, true); }
+    catch (e) { r = {error: String(e)}; }
+    if (my !== JOB) return;
+    if (!r.ok) { progressEnd(); $("#status").innerHTML = `<span class="err">${esc(t`Не удалось загрузить ${f.name}: ${r.error}. Проверка остановлена`)}</span>`; return; }
   }
-  $("#status").textContent = t`Проверяю ${plural(files.length, "фото", "фото", "фото")}…`;
-  showResult(await post(`/api/scan?batch=${batch}&keep=${CFG.keep?1:0}&days=${CFG.days}`));
+  await checkJob(post(`/api/scan?batch=${batch}&keep=${CFG.keep?1:0}&days=${CFG.days}`), my);
 }
 async function rescan(batch){
-  $("#status").textContent = tr("Проверяю пачку заново…");
-  showResult(await post(`/api/scan?batch=${encodeURIComponent(batch)}&keep=0&days=${CFG.days}`));
+  const my = ++JOB;
+  progressStart(UP_STAGES.slice(1));
+  await checkJob(post(`/api/scan?batch=${encodeURIComponent(batch)}&keep=0&days=${CFG.days}`), my);
 }
 // a folder on disk: the server reads it in place, in the background; the page asks how far it got
 let JOB = 0;
 async function runDir(path, after){
   const my = ++JOB;
-  $("#status").textContent = tr("Запускаю проверку папки…");
-  const s = await post("/api/scan_dir", {path, keep: CFG.keep, days: CFG.days});
-  if (s.error) { $("#status").innerHTML = `<span class="err">${esc(s.error)}</span>`; return; }
-  $("#dirPath").value = s.root;
-  let fpStart = null;
-  for (;;) {
+  progressStart(DIR_STAGES);
+  if (await checkJob(post("/api/scan_dir", {path, keep: CFG.keep, days: CFG.days}), my, s => $("#dirPath").value = s.root)) after?.();
+}
+// every check runs in the background on the server; until it is done the page lists its stages
+const STAGES = {
+  upload: "Загрузка фото в программу", list: "Поиск фото в папке", hash: "Чтение файлов", fingerprint: "Разбор новых фото",
+  match: "Сравнение фото между собой", series: "Поиск серий снимков среди копий",
+  rephoto: "Проверка, не пересняты ли новые фото со старых", result: "Подготовка результата",
+};
+const DIR_STAGES = ["list", "hash", "fingerprint", "match", "series", "rephoto", "result"];
+const UP_STAGES = ["upload", "hash", "fingerprint", "match", "series", "rephoto", "result"];
+let PROG = null;
+const fmtDur = sec => { sec = Math.max(0, Math.round(sec)); return sec < 60 ? t`${sec} с` : t`${Math.floor(sec / 60)} мин ${String(sec % 60).padStart(2, "0")} с`; };
+function progressStart(order){ store.del("job"); PROG = {order, t0: Date.now(), cur: null}; drawProgress(null, 0, 0); }
+function progressEnd(){ PROG = null; $("#status").textContent = ""; }
+function drawProgress(stage, done, total){
+  const P = PROG; if (!P) return;
+  if (stage !== P.cur) Object.assign(P, {cur: stage, since: Date.now(), d0: done});
+  const at = P.order.indexOf(stage), run = (Date.now() - P.since) / 1000;
+  const rate = run > 0 ? (done - P.d0) / run : 0, left = rate > 0 ? (total - done) / rate : 0;
+  const li = P.order.map((st, k) => {
+    const cls = k < at ? "done" : k === at ? "now" : "next";
+    let num = "";
+    if (cls === "now" && total) num = t`${done} из ${total}` + (run < 5 ? "" : left > 60 ? t`, осталось около ${Math.round(left / 60)} мин` : left > 0 ? tr(", осталось меньше минуты") : "");
+    return `<li class="${cls}"><span class="mark" aria-hidden="true"></span><span>${esc(tr(STAGES[st]))}</span>${num ? `<span class="pnum">${esc(num)}</span>` : ""}</li>`;
+  }).join("");
+  $("#status").innerHTML = `<div class="progress"><p>${esc(t`Идёт проверка: ${fmtDur((Date.now() - P.t0) / 1000)}`)}</p><ol>${li}</ol></div>`;
+}
+// started: the request that started a job. Waits for it, then shows the result. true when a result was shown.
+async function checkJob(started, my, onStart){
+  const fail = msg => { if (my === JOB) { PROG = null; store.del("job"); $("#status").innerHTML = `<span class="err">${esc(msg)}</span>`; } return false; };
+  const lost = tr("Программа не отвечает. Возможно, её выключили: запустите её снова и повторите проверку");
+  let s;
+  try { s = await started; } catch (e) { return fail(lost); }
+  if (s.error) return fail(t`Ошибка: ${s.error}`);
+  onStart?.(s);
+  store.set("job", JSON.stringify({id: s.job, order: PROG?.order}));  // a reload comes back to this check
+  for (let miss = 0;;) {
     await sleep(700);
-    if (my !== JOB) return;  // a newer check replaced this one
-    const j = await getJSON(`/api/job?id=${s.job}`);
-    if (j.error) { $("#status").innerHTML = `<span class="err">${esc(j.error)}</span>`; return; }
-    if (j.stage === "done") { showResult(j.result); after?.(); return; }
-    if (j.stage === "error") { $("#status").innerHTML = `<span class="err">${t`Ошибка: ${esc(j.error)}`}</span>`; return; }
-    let msg = tr("Ищу фото во вложенных папках…");
-    if (j.stage === "hash") msg = t`Читаю файлы: ${j.done} из ${j.total}`;
-    if (j.stage === "fingerprint") {
-      fpStart ??= {t: Date.now(), d: j.done};
-      const rate = (j.done - fpStart.d) / ((Date.now() - fpStart.t) / 1000), left = rate > 0 ? (j.total - j.done) / rate : 0;
-      msg = t`Обрабатываю новые фото: ${j.done} из ${j.total}` + (left > 60 ? t`, осталось около ${Math.round(left / 60)} мин` : left > 0 ? tr(", осталось меньше минуты") : "");
-    }
-    if (j.stage === "match") msg = tr("Сравниваю все фото между собой…");
-    if (j.stage === "rephoto") msg = t`Проверяю, не пересняты ли новые фото со старых: ${j.done} из ${j.total}`;
-    if (j.stage === "series") msg = t`Проверяю, нет ли среди копий серий снимков: ${j.done} из ${j.total}`;
-    $("#status").textContent = msg;
+    if (my !== JOB) return false;  // a newer check replaced this one
+    let j;
+    try { j = await getJSON(`/api/job?id=${s.job}`); miss = 0; } catch (e) { if (++miss >= 3) return fail(lost); continue; }
+    if (my !== JOB) return false;
+    if (j.error) return fail(j.error);
+    if (j.stage === "error") return fail(t`Ошибка: ${j.error}`);
+    if (j.stage === "done") { progressEnd(); return showResult(j.result); }
+    drawProgress(j.stage, j.done, j.total);
   }
+}
+// after a reload, or in a tab opened again from the icon: the last check, still running or already finished.
+// Nothing to come back to (the program was restarted, or the check failed): an empty screen, as before
+async function resumeJob(){
+  let saved = null;
+  try { saved = JSON.parse(store.get("job") || "null"); } catch {}
+  if (!saved?.id) return;
+  const my = ++JOB;
+  let j;
+  try { j = await getJSON(`/api/job?id=${encodeURIComponent(saved.id)}`); } catch { return; }
+  if (my !== JOB) return;
+  if (j.error || j.stage === "error") return store.del("job");
+  if (j.root) $("#dirPath").value = j.root;
+  if (j.stage === "done") return showResult(j.result);
+  PROG = {order: saved.order || DIR_STAGES, t0: j.started * 1000, cur: null};
+  drawProgress(j.stage, j.done, j.total);
+  checkJob(Promise.resolve({job: saved.id}), my);
 }
 
 const PLAIN = {
@@ -1089,7 +1145,7 @@ function renderResult(){
   buildPlan();
   renderTidy();
   // after a result the drop zone shrinks to one line
-  drop.classList.add("compact"); $("#dropText").textContent = tr("Новая пачка: перетащите фото или папку");
+  drop.classList.add("compact"); $("#dropText").textContent = tr("Новая проверка: выберите папку");
   $("#dropRow").style.justifyContent = "flex-start";
 }
 
@@ -1214,10 +1270,11 @@ $("#result").addEventListener("click", e => {
   try { SAVED = (await getJSON("/api/presets")).presets || []; } catch { SAVED = []; }
   const q = new URLSearchParams(location.search);
   CUR = null; applyPreset(store.get("preset") || BUILTIN[0].id);
-  // a link with ?dir= or ?batch= opens that check once; the address is cleaned, so a reload starts with an empty screen
+  // a link with ?dir= or ?batch= opens that check once and the address is cleaned: a reload comes back through resumeJob
   if (q.has("dir") || q.has("batch")) history.replaceState(null, "", location.pathname + (q.get("lang") ? "?lang=" + encodeURIComponent(q.get("lang")) : "") + location.hash);
   if (q.get("dir")) { $("#dirPath").value = q.get("dir"); runDir(q.get("dir")); }
   else if (q.get("batch")) rescan(q.get("batch"));
+  else resumeJob();
 })();
 
 /* ---------- lab ---------- */
@@ -1335,7 +1392,10 @@ async function loadTests(){
 if (/Win/.test(navigator.platform)) $("#dirPath").placeholder = "C:\\Users\\имя\\Pictures\\Архив";
 $("#quitApp").onclick = async () => {
   if (!confirm(tr("Выключить программу? Чтобы снова проверять фото, её нужно будет запустить заново."))) return;
-  try { await post("/api/quit"); } catch (e) {}
+  let r;
+  try { r = await post("/api/quit"); } catch (e) { r = {error: String(e)}; }
+  if (!r?.ok) { alert(t`Не получилось выключить программу: ${r?.error || tr("нет ответа")}. Выключите её через значок программы у часов`); return; }
+  JOB++;  // a check that was running stops asking
   document.querySelector("main").innerHTML = `<p class="lead" style="padding:48px 0">${tr("Программа выключена. Эту вкладку можно закрыть.")}</p>`;
   $("#quitApp").hidden = true;
 };

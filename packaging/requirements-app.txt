@@ -1,0 +1,2 @@
+# The icon by the clock (Mac menu bar, Windows notification area) in the built app. Not needed for python -m dedup.
+pystray==0.19.5

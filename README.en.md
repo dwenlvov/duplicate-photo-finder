@@ -16,7 +16,7 @@ The interface is in English and Russian. It opens in Russian if your system lang
 
 | Version | Mac | Windows |
 |---|---|---|
-| 1.0 | [Download for Mac](https://github.com/dwenlvov/duplicate-photo-finder/raw/main/builds/DuplicatePhotoFinder-1.0-mac-arm64.dmg) (86 MB) | [Download for Windows](https://github.com/dwenlvov/duplicate-photo-finder/raw/main/builds/DuplicatePhotoFinder-1.0-windows-x64.zip) (97 MB) |
+| 1.1 | [Download for Mac](https://github.com/dwenlvov/duplicate-photo-finder/raw/main/builds/DuplicatePhotoFinder-1.1-mac-arm64.dmg) (87 MB) | [Download for Windows](https://github.com/dwenlvov/duplicate-photo-finder/raw/main/builds/DuplicatePhotoFinder-1.1-windows-x64.zip) (97 MB) |
 
 - **Mac:** Apple silicon (M1 or later) and macOS 14 Sonoma or later. Macs with an Intel processor are not supported. To check, open the Apple menu > About This Mac and look at the line labeled "Chip".
 - **Windows:** Windows 10 or 11, 64-bit. To check, open Settings > System > About and look at the line labeled "System type".
@@ -37,11 +37,11 @@ The first time, macOS refuses to open the app because it is not signed with Appl
 - **macOS 15 or later:** click "Done" in the warning. Open System Settings > Privacy & Security and scroll down. You will see a message that Duplicate Photo Finder was blocked, with an "Open Anyway" button: click it, enter your Mac password, then click "Open". The message only appears for about an hour after you try to open the app; if it is not there, open the app from Applications again and come back.
 - **macOS 14:** right-click Duplicate Photo Finder in Applications, choose "Open", then click "Open" again.
 
-After 10 to 20 seconds a new tab titled Duplicate Photo Finder opens in your default browser. The app has no window of its own; everything happens in that tab. If no tab appears, open http://127.0.0.1:8777/ in your browser.
+After 10 to 20 seconds a new tab titled Duplicate Photo Finder opens in your default browser. The app has no window of its own; everything happens in that tab. While it runs, its icon sits in the menu bar near the clock: two photos, one over the other. Use it to open the page again or to shut the program down. If no tab appears, open http://127.0.0.1:8777/ in your browser.
 
 ## Install on Windows
 
-1. Find the downloaded `DuplicatePhotoFinder-1.0-windows-x64.zip`, usually in your Downloads folder. Select it and press Alt+Enter to open Properties (or right-click > Properties; on Windows 11 it may be under "Show more options"). If the General tab has an "Unblock" checkbox at the bottom, tick it and click OK. Without this, Windows shows more warnings later.
+1. Find the downloaded `DuplicatePhotoFinder-1.1-windows-x64.zip`, usually in your Downloads folder. Select it and press Alt+Enter to open Properties (or right-click > Properties; on Windows 11 it may be under "Show more options"). If the General tab has an "Unblock" checkbox at the bottom, tick it and click OK. Without this, Windows shows more warnings later.
 2. Right-click the archive > "Extract All", choose a place to keep the program, such as Documents, and click "Extract". A folder named DuplicatePhotoFinder appears there. The program does not run from inside the archive.
 3. Open the DuplicatePhotoFinder folder. It contains a few files and two folders. Double-click `start.bat`. If Windows hides file extensions, it shows as "start" with a gear icon.
 
@@ -50,13 +50,13 @@ Windows may warn about an unknown publisher:
 - "Windows protected your PC": click the small "More info" link; a "Run anyway" button then appears. Click it.
 - "Open File - Security Warning": click "Run".
 
-A black window opens with a few lines of text in Russian and English. Within a few seconds a new tab titled Duplicate Photo Finder opens in your default browser. Keep the black window open while you work: closing it shuts the program down. If no tab appears, open http://127.0.0.1:8777/ in your browser. If that number is taken by another program, the black window shows the actual address on the line starting with "Open:".
+A black window opens with a few lines of text in Russian and English. Within a few seconds a new tab titled Duplicate Photo Finder opens in your default browser. Keep the black window open while you work: closing it shuts the program down. The program's icon also appears by the clock in the bottom right corner; Windows may tuck it under the "^" arrow. Click it to open the page, or right-click it for a menu with "Shut down". If no tab appears, open http://127.0.0.1:8777/ in your browser. If that number is taken by another program, the black window shows the actual address on the line starting with "Open:".
 
 ## Check a folder
 
 1. On the "Check a batch" tab, click "Choose folder" and pick your photo folder. Subfolders are included. The folder picker may open behind the browser window; if nothing seems to happen, look for it there.
    On a Mac, the first time you check a folder in Documents, Desktop or Downloads, macOS asks whether Duplicate Photo Finder may access it. Click "Allow", or the program sees no photos.
-2. While it runs, a line under the buttons shows progress, for example "Processing new photos: 120 of 800". It is finished when a line such as "800 photos checked" appears, with the results below it.
+2. While it runs, the stages of the check are listed under the buttons. The current stage shows how far it has got, for example "Analysing new photos 120 of 800". When the check is finished, the list gives way to a line such as "800 photos checked", with the results below it.
 3. The results are grouped. "Copies" are the same photo saved more than once, possibly cropped, compressed or mirrored. "Similar shots" are different photos of the same place, or a burst. In each group of copies the program marks one file "Keep", usually the largest, and the rest "Remove". Similar shots are all marked "Keep" by default. Each photo has a "Keep" and a "Remove" button under it to change its mark.
 4. A panel stays fixed at the bottom of the screen and shows how many files stay and how many will be moved. Click "Move to «_дубли»" on it, then "Yes, move".
 5. The panel then shows "Moved to ..." with the number of files. The files marked "Remove" are now in a `_дубли` folder inside the folder you checked, keeping the same subfolders. You can open it in Finder or File Explorer like any folder.
@@ -69,7 +69,7 @@ Photos kept in the Apple Photos app live inside its library, which the program d
 
 ## Quit
 
-Click "Shut down" in the top right corner of the page, then confirm. On Windows you can also close the black window.
+Click "Shut down" in the top right corner of the page, then confirm, or choose "Shut down" in the menu of the program's icon by the clock. On Windows you can also close the black window.
 
 ## Data and removal
 

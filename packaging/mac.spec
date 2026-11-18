@@ -10,10 +10,13 @@ a = Analysis(
     datas=[
         (os.path.join(ROOT, "dedup", "ui", "index.html"), os.path.join("dedup", "ui")),
         (os.path.join(ROOT, "dedup", "models", "sscd_int8.onnx"), os.path.join("dedup", "models")),
+        (os.path.join(ROOT, "VERSION"), "dedup"),  # the page server reports it; a second start compares
     ],
-    hiddenimports=["dedup.__main__", "dedup.ui.server"],
+    hiddenimports=["dedup.__main__", "dedup.ui.server", "pystray._darwin"],
     # onnxruntime pulls sympy only for its offline tools; the app never imports it
     excludes=["tkinter", "sympy", "mpmath", "matplotlib", "IPython", "pytest"],
+    # pystray is LGPL-3.0: kept as its own source files inside the app, so anyone can swap in another version
+    module_collection_mode={"pystray": "py"},
 )
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="DuplicatePhotoFinder", console=False, target_arch="arm64")
@@ -29,7 +32,7 @@ app = BUNDLE(
         "CFBundleShortVersionString": VERSION,
         # onnxruntime 1.24 for Apple Silicon is built for macOS 14; everything else allows older systems
         "LSMinimumSystemVersion": "14.0",
-        # no window of its own: the page opens in the browser, the app is switched off by a button on the page
+        # no window and no Dock icon: the page opens in the browser, the icon in the menu bar shuts the app down
         "LSUIElement": True,
     },
 )

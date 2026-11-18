@@ -46,6 +46,11 @@ Bundled into the Mac and Windows builds.
 | opencv-python-headless | Apache-2.0 | https://github.com/opencv/opencv-python |
 | onnxruntime | MIT | https://github.com/microsoft/onnxruntime |
 | pdqhash | MIT | https://github.com/faustomorales/pdqhash-python |
+| pystray | LGPL-3.0 | https://github.com/moses-palmer/pystray |
+| six (Windows build) | MIT | https://github.com/benjaminp/six |
+| PyObjC: pyobjc-core, pyobjc-framework-Cocoa, pyobjc-framework-Quartz (Mac build) | MIT | https://github.com/ronaldoussoren/pyobjc |
+
+pystray draws the program's icon by the clock. It is included unchanged, as its own source files, so it can be replaced with another version: in the Windows build it is the folder `python/Lib/site-packages/pystray`, in the Mac build the folder `pystray` inside `Duplicate Photo Finder.app/Contents/Resources`. Its source and the full license text: https://github.com/moses-palmer/pystray.
 
 The pillow-heif binary wheels contain libheif and libde265 (LGPL-3.0) and x265 (GPL-2.0). Their sources are linked from the pillow-heif project. The source of this program is in this repository.
 

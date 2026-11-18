@@ -24,6 +24,10 @@ printf 'python313.zip\r\n.\r\nLib\\site-packages\r\n..\r\nimport site\r\n' > "$P
 "$VENV/bin/python" -m pip install -q --target "$APP/python/Lib/site-packages" \
   --platform win_amd64 --python-version 3.13 --implementation cp --only-binary=:all: \
   -r requirements.txt
+# the icon by the clock; --no-deps: pip would judge its macOS-only dependencies by this Mac, not by Windows
+"$VENV/bin/python" -m pip install -q --target "$APP/python/Lib/site-packages" \
+  --platform win_amd64 --python-version 3.13 --implementation cp --only-binary=:all: --no-deps \
+  pystray==0.19.5 six==1.17.0
 rm -rf "$APP"/python/Lib/site-packages/{sympy,mpmath,isympy.py,bin}
 # OpenCV's video module (ffmpeg, ~28 MB): the program reads only still images
 rm -f "$APP"/python/Lib/site-packages/cv2/opencv_videoio_ffmpeg*.dll
@@ -43,6 +47,7 @@ unzip -q -j -o "$MSVC"/msvc_runtime-*-cp313-cp313-win_amd64.whl \
   'msvc_runtime-*.data/data/msvcp140.dll' 'msvc_runtime-*.data/data/msvcp140_1.dll' -d "$APP/python"
 mkdir -p "$APP/dedup"
 rsync -a --exclude __pycache__ dedup/ "$APP/dedup/"
+cp VERSION "$APP/dedup/VERSION"
 cp packaging/launcher.py "$APP/"
 cp packaging/windows/start.bat "$APP/"
 perl -pe 's/\r?\n/\r\n/' packaging/readme/windows.txt > "$APP/README.txt"

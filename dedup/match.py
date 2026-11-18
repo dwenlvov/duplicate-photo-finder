@@ -64,15 +64,19 @@ def _is_series(pa: str, pb: str) -> bool:
         return False
 
 
-def all_candidates(items: list[dict], new_idx: list[int], floor: float = 0.2, top_k: int = 50) -> list[dict]:
+def all_candidates(items: list[dict], new_idx: list[int], floor: float = 0.2, top_k: int = 50,
+                   progress=None) -> list[dict]:
     """Every pair worth showing in the UI, with all raw scores (ORB always computed), no verdict.
-    The UI applies thresholds itself, so sliders re-classify pairs without recomputing."""
+    The UI applies thresholds itself, so sliders re-classify pairs without recomputing.
+    progress(done, total) is called now and then: on a big folder this step takes minutes."""
     n = len(items)
     if n < 2 or not new_idx:
         return []
     S, D, q_ok, is_new = _matrices(items, new_idx)
     out = {}
     for qi, i in enumerate(new_idx):
+        if progress and qi % 50 == 0:
+            progress(qi, len(new_idx))
         mask = np.ones(n, bool)
         mask[i] = False
         mask &= ~(is_new & (np.arange(n) < i))

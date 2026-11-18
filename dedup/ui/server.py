@@ -30,6 +30,9 @@ DATA = Path(os.environ["DEDUP_DATA"]) if os.environ.get("DEDUP_DATA") else ROOT 
 UPLOADS = DATA / "uploads"
 DB = DATA / "ui.db"
 HTML = Path(__file__).with_name("index.html")
+# the version of this program: dedup/VERSION inside the built app, VERSION at the top of the source folder
+_VER = [v for v in (Path(__file__).parents[1] / "VERSION", Path(__file__).parents[2] / "VERSION") if v.is_file()]
+VERSION = _VER[0].read_text().strip() if _VER else "dev"
 TESTS = [p for p in os.environ.get("DEDUP_TEST_REPORTS", "").split(os.pathsep) if p]
 _REQ = threading.local()  # the language of the request being answered: the page sends X-Lang: en|ru
 
@@ -103,6 +106,7 @@ def _could_be_copy(c: dict) -> bool:
 def _mark_series(st: Store, items: list[dict], by_sha: dict, cands: list[dict], progress):
     """For every pair that may be a copy: is it two frames of a series instead? Needs both files; cached per pair."""
     todo = [c for c in cands if _could_be_copy(c)]
+    progress("series", 0, len(todo))
     for k, c in enumerate(todo, 1):
         a, b = items[c["i"]], items[c["j"]]
         res = st.get_series(a["sha256"], b["sha256"], series.SERIES_VERSION)
@@ -125,6 +129,7 @@ def _mark_rephoto(st: Store, items: list[dict], by_sha: dict, new: set, cands: l
     screen? Only new-vs-old pairs: that is how an old photo gets passed off as new. Cached per pair and direction."""
     todo = [c for c in cands if (c["i"] in new) != (c["j"] in new) and not c["same_pixels"]
             and 0.25 <= c["sscd"] < 0.75 and c["orb"] >= 30]
+    progress("rephoto", 0, len(todo))
     for k, c in enumerate(todo, 1):
         old, nw = (items[c["j"]], items[c["i"]]) if c["i"] in new else (items[c["i"]], items[c["j"]])
         ver = rephoto.REPHOTO_VERSION + (":ab" if old["sha256"] < nw["sha256"] else ":ba")
@@ -153,6 +158,7 @@ def _scan(paths: list[str], batch: str, keep: bool, days: int, root: str | None 
     t0 = time.perf_counter()
     by_sha: dict[str, list[str]] = {}
     failed = []
+    progress("hash", 0, len(paths))
     for k, p in enumerate(paths, 1):
         try:
             by_sha.setdefault(_sha_cached(st, p), []).append(p)
@@ -164,6 +170,7 @@ def _scan(paths: list[str], batch: str, keep: bool, days: int, root: str | None 
     seen = [s for s in by_sha if st.known(s)]
     todo = [s for s in by_sha if s not in seen]
     per_photo = []
+    progress("fingerprint", 0, len(todo))
     for k, s in enumerate(todo, 1):
         try:
             fp = features.compute(by_sha[s][0], sha256=s)
@@ -177,16 +184,18 @@ def _scan(paths: list[str], batch: str, keep: bool, days: int, root: str | None 
             progress("fingerprint", k, len(todo))
     st.commit()
     t_fp = time.perf_counter() - t0
-    progress("match", 0, 0)
+    progress("match", 0, len(by_sha))
     t1 = time.perf_counter()
     items = st.window(now, days if days > 0 else 365 * 100)
     new_idx = [k for k, it in enumerate(items) if it["sha256"] in by_sha]  # whole batch, incl. known files
     # a big folder is compared all-vs-all: fewer candidates per photo keeps the slow point matching in check
     big = len(new_idx) > 1500
-    cands = match.all_candidates(items, new_idx, floor=0.3 if big else 0.2, top_k=15 if big else 50)
+    cands = match.all_candidates(items, new_idx, floor=0.3 if big else 0.2, top_k=15 if big else 50,
+                                 progress=lambda d, t: progress("match", d, t))
     _mark_series(st, items, by_sha, cands, progress)
     _mark_rephoto(st, items, by_sha, set(new_idx), cands, progress)
     t_match = time.perf_counter() - t1
+    progress("result", 0, 0)
     if not keep:  # one-off check: forget this batch again
         st.db.executemany("DELETE FROM photos WHERE sha256=?", [(s,) for s in todo])
         st.commit()
@@ -217,27 +226,65 @@ def _scan(paths: list[str], batch: str, keep: bool, days: int, root: str | None 
                             per_photo_ms={key: round(float(np.median(v)), 1) for key, v in stages.items()}))
 
 
-def api_scan(batch: str, keep: bool, days: int = 7) -> dict:
-    """A batch uploaded through the browser into data/uploads/<batch>."""
-    return _scan(features.list_images(str(UPLOADS / batch)), batch, keep, days)
-
-
-# ---------- a folder on this Mac, scanned in place, in the background ----------
+# ---------- every check runs in the background; the page asks how far it got ----------
 JOBS: dict[str, dict] = {}
 SCANNED_ROOTS: set[str] = set()
 
 
-def _job_run(job: dict, root: str, keep: bool, days: int):
+KEEP_DONE = 3  # finished checks kept in memory, so a reloaded page shows its result without checking again
+_RUN = threading.Lock()  # one check at a time: two at once write to one database and the second fails ("database is locked")
+
+
+class _Stopped(Exception):
+    pass
+
+
+def _start_job(work, key: str, **info) -> str:
+    """work(progress) -> result, in its own thread. progress(stage, done, total) is what the page shows.
+    key: the same folder with the same settings. While such a check runs, a second start joins it instead of
+    doing the same work twice (a page reloaded mid-check, or "Выбрать папку" pressed again). Any other check still
+    running is stopped: the page follows only the newest one."""
+    running = [j for j in JOBS.values() if j["stage"] not in ("done", "error") and not j.get("stop")]
+    for j in running:
+        if j["key"] == key:
+            return j["id"]
+    for j in running:
+        j["stop"] = True
+    ended = [j for j in JOBS if JOBS[j]["stage"] in ("done", "error")]
+    for old in ended[:max(0, len(ended) - KEEP_DONE + 1)]:
+        del JOBS[old]
+    jid = f"j{int(time.time() * 1000)}"
+    while jid in JOBS:
+        jid += "x"
+    job = JOBS[jid] = dict(id=jid, key=key, stage="queued", done=0, total=0, started=time.time(), **info)
+    lang = getattr(_REQ, "lang", "ru")
+
     def progress(stage, done, total):
+        if job.get("stop"):
+            raise _Stopped
         job.update(stage=stage, done=done, total=total)
-    try:
-        job.update(stage="list", done=0, total=0)
-        paths = features.list_images(root)
-        job["files"] = len(paths)
-        job["result"] = _scan(paths, "dir:" + root, keep, days, root=root, progress=progress)
-        job["stage"] = "done"
-    except Exception as e:  # shown on the page
-        job.update(stage="error", error=str(e))
+
+    def run():
+        _REQ.lang = lang  # error texts in the language of the page that started the check
+        try:
+            with _RUN:
+                if job.get("stop"):
+                    raise _Stopped
+                job["result"] = work(progress)
+            job["stage"] = "done"
+        except _Stopped:
+            job.update(stage="error", error=_t("Проверка остановлена: запущена другая проверка",
+                                               "The check was stopped: another check was started"))
+        except Exception as e:  # shown on the page
+            job.update(stage="error", error=str(e))
+    threading.Thread(target=run, daemon=True).start()
+    return jid
+
+
+def api_scan(batch: str, keep: bool, days: int = 7) -> dict:
+    """A batch uploaded through the browser into data/uploads/<batch>."""
+    return dict(job=_start_job(lambda progress: _scan(features.list_images(str(UPLOADS / batch)), batch, keep, days,
+                                                      progress=progress), key=f"batch:{batch}|{keep}|{days}"))
 
 
 def api_scan_dir(path: str, keep: bool, days: int) -> dict:
@@ -251,10 +298,11 @@ def api_scan_dir(path: str, keep: bool, days: int) -> dict:
         raise ValueError(_t("Это медиатека приложения «Фото». Её файлы трогать нельзя: удалите дубли в самом приложении",
                             "This is the Apple Photos library. Its files must not be touched: delete duplicates in the Photos app itself"))
     SCANNED_ROOTS.add(root)
-    jid = f"j{int(time.time() * 1000)}"
-    job = JOBS[jid] = dict(id=jid, root=root, stage="queued", done=0, total=0, started=time.time())
-    threading.Thread(target=_job_run, args=(job, root, keep, days), daemon=True).start()
-    return dict(job=jid, root=root)
+
+    def work(progress):
+        progress("list", 0, 0)
+        return _scan(features.list_images(root), "dir:" + root, keep, days, root=root, progress=progress)
+    return dict(job=_start_job(work, key=f"dir:{root}|{keep}|{days}", root=root), root=root)
 
 
 def api_job(jid: str) -> dict:
@@ -262,7 +310,18 @@ def api_job(jid: str) -> dict:
     if not job:
         raise LookupError(_t("Проверка не найдена: страница сервера перезапускалась. Запустите проверку папки снова.",
                              "Check not found: the page server was restarted. Start the folder check again."))
-    return {k: v for k, v in job.items() if k != "result"} | ({"result": job["result"]} if job["stage"] == "done" else {})
+    out = {k: v for k, v in job.items() if k not in ("result", "key", "stop")}
+    if job["stage"] == "done":
+        out["result"] = _fresh(job["result"])
+    return out
+
+
+def _fresh(r: dict) -> dict:
+    """A finished check read again later: the marks and verdicts a person changed since then come from the database."""
+    st = _store()
+    shas = {it["sha"] for it in r["items"]}
+    reviews = {f"{a}|{b}": v for (a, b), v in st.reviews().items() if a in shas and b in shas}
+    return r | dict(choices=st.choices(r["scope"]), reviews=reviews)
 
 
 def _inside(path: str, root: str) -> bool:
@@ -546,6 +605,8 @@ class H(BaseHTTPRequestHandler):
                 if not _allowed(q["path"]):
                     return self._json({"error": "path not allowed"}, 403)
                 return self._send(200, _thumb(q["path"], int(q.get("side", 320))), "image/jpeg")
+            if u.path == "/api/version":  # a second start asks this to tell its own copy from an older one
+                return self._json({"app": "Duplicate Photo Finder", "version": VERSION})
             if u.path == "/api/job":
                 return self._json(api_job(q["id"]))
             if u.path == "/api/presets":
@@ -579,10 +640,16 @@ class H(BaseHTTPRequestHandler):
         try:
             if u.path == "/api/upload":
                 batch = re.sub(r"[^\w.-]", "_", q["batch"])
-                name = re.sub(r"[^\w.\- ()]", "_", os.path.basename(q["name"]))[:120]
+                name = re.sub(r"[^\w.\- ()]", "_", os.path.basename(q["name"]))
+                stem, ext = os.path.splitext(name)
+                stem, ext = stem[:100], ext[:10]  # a long name is cut, its extension is kept
                 d = UPLOADS / batch
                 d.mkdir(parents=True, exist_ok=True)
-                (d / name).write_bytes(self._body())
+                f, n = d / (stem + ext), 1
+                while f.exists():  # two files with one name: keep both
+                    n += 1
+                    f = d / f"{stem} ({n}){ext}"
+                f.write_bytes(self._body())
                 return self._json({"ok": True})
             if u.path == "/api/scan":
                 batch = re.sub(r"[^\w.-]", "_", q["batch"])
@@ -628,35 +695,39 @@ class H(BaseHTTPRequestHandler):
             return self._json({"error": str(e)}, 500)
 
 
-def _ours(port: int) -> bool:
-    """Is this program already answering on the port? Then a second start only opens the page."""
+def _running(port: int) -> str | None:
+    """Which version of this program answers on the port: None if none (another program, or nothing)."""
     import urllib.request
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1.5) as r:
-            return "Duplicate Photo Finder" in r.read(4000).decode("utf-8", "replace")
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/version", timeout=1.5) as r:
+            j = json.loads(r.read(2000))
+        return j["version"] if j.get("app") == "Duplicate Photo Finder" else None
     except Exception:
-        return False
+        return None
+
+
+def bind(port: int = 8777) -> tuple[ThreadingHTTPServer | None, str]:
+    """Take the first free port from `port` on. If this very version already runs there, return (None, its url):
+    a second start only opens the page. An older copy of the program is left alone and a free port is taken."""
+    DATA.mkdir(parents=True, exist_ok=True)
+    for p in range(port, port + 20):
+        if _running(p) == VERSION:
+            return None, f"http://127.0.0.1:{p}/"
+        try:
+            return ThreadingHTTPServer(("127.0.0.1", p), H), f"http://127.0.0.1:{p}/"
+        except OSError:  # the port is taken by another program or an older copy: try the next one
+            continue
+    raise SystemExit(f"Не нашлось свободного порта от {port} до {port + 19}\nNo free port from {port} to {port + 19}")
 
 
 def serve(port: int = 8777, open_browser: bool = False):
     import webbrowser
-    DATA.mkdir(parents=True, exist_ok=True)
-    srv = None
-    for p in range(port, port + 20):
-        if _ours(p):
-            print(f"Программа уже запущена: http://127.0.0.1:{p}/\nThe program is already running: http://127.0.0.1:{p}/", flush=True)
-            if open_browser:
-                webbrowser.open(f"http://127.0.0.1:{p}/")
-            return
-        try:
-            srv = ThreadingHTTPServer(("127.0.0.1", p), H)
-            port = p
-            break
-        except OSError:  # the port is taken by another program: try the next one
-            continue
+    srv, url = bind(port)
     if srv is None:
-        raise SystemExit(f"Не нашлось свободного порта от {port} до {port + 19}\nNo free port from {port} to {port + 19}")
-    url = f"http://127.0.0.1:{port}/"
+        print(f"Программа уже запущена: {url}\nThe program is already running: {url}", flush=True)
+        if open_browser:
+            webbrowser.open(url)
+        return
     # before any page is open the language is unknown: both lines
     print(f"Открыть: {url}  (остановить: кнопка «Выключить» на странице или Ctrl+C)\n"
           f"Open: {url}  (to stop: the \"Shut down\" button on the page, or Ctrl+C)", flush=True)

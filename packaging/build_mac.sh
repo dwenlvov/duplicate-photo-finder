@@ -15,6 +15,7 @@ if [ ! -x "$VENV/bin/python" ]; then
   "$PYDIR"/cpython-3.13.5-macos-aarch64-none/bin/python3.13 -m venv "$VENV"
   "$VENV/bin/python" -m pip install -q -r requirements.txt pyinstaller
 fi
+"$VENV/bin/python" -m pip install -q -r packaging/requirements-app.txt
 VER=$(cat VERSION)
 OUT="builds/DuplicatePhotoFinder-$VER-mac-arm64.dmg"
 rm -rf "$WORK"; mkdir -p "$WORK/zip/$NAME" builds
