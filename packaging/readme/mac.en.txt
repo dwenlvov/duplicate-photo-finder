@@ -1,0 +1,112 @@
+Duplicate Photo Finder for Mac
+==============================
+
+The program finds identical and similar shots in a photo folder and helps you set the extra ones aside. It recognises a copy even when the photo was cropped, recompressed, mirrored, captioned or screenshotted. A burst of shots taken one after another is not treated as copies.
+
+Your photos never leave this Mac: the program works offline. It goes online only when you click "Check for updates": it then reads the newest version number from GitHub and sends nothing else. It never deletes anything. Extra files go into a folder named «_дубли» ("duplicates"), and one button puts them back.
+
+The interface is in English and Russian. Switch with the RU and EN buttons in the top right corner of the page.
+
+
+Will it run on your Mac
+-----------------------
+
+You need a Mac with Apple silicon (M1 or later) and macOS 14 Sonoma or later. The program does not start on a Mac with an Intel processor.
+
+To check: Apple menu (top left) > About This Mac. The "Chip" line should say Apple M1, M2, M3 or later, and the "macOS" line version 14 or higher.
+
+Supported formats: JPG, PNG, WebP, HEIC (iPhone photos), TIFF and BMP. Camera RAW files and videos are skipped.
+
+
+Install
+-------
+
+1. Double-click the downloaded file DuplicatePhotoFinder-1.2-mac-arm64.dmg. A window opens with the Duplicate Photo Finder app and an Applications folder.
+2. Drag Duplicate Photo Finder onto the Applications folder in that window. This copies the program into Applications.
+3. Close the window and eject the Duplicate Photo Finder disk: click the eject button next to it in the Finder sidebar.
+4. Double-click Duplicate Photo Finder in Applications.
+
+The first time, macOS does not open the program: it is not signed with Apple, and the system warns that it cannot check it. This is expected. You allow it once, and after that the program opens with a normal double-click.
+
+On macOS 15 or later:
+  1. Click "Done" in the warning. The window closes and the program does not open yet.
+  2. Open System Settings > Privacy & Security.
+  3. Scroll down to the line saying Duplicate Photo Finder was blocked and click "Open Anyway" next to it. The line appears only after you try to open the program and stays for about an hour. If it is not there, open the program from Applications again and come back.
+  4. Enter your Mac password, then click "Open" in the new window.
+
+On macOS 14: right-click Duplicate Photo Finder in Applications, choose "Open", then click "Open" again in the window.
+
+If none of this helps, allow it from Terminal:
+  1. Open Terminal: Applications > Utilities > Terminal.
+  2. Copy the whole line below, paste it into the Terminal window and press Enter. The command removes the "downloaded from the internet" mark from this program and changes nothing else.
+
+       xattr -dr com.apple.quarantine "/Applications/Duplicate Photo Finder.app"
+
+  3. If Terminal prints nothing in reply, it worked. Double-click the program.
+
+
+How to tell it works
+--------------------
+
+10 to 20 seconds after the start, the Duplicate Photo Finder page opens in your browser. Its address is usually http://127.0.0.1:8777/. If another program already uses that number, the last digit differs.
+
+The program has no window of its own: everything happens on that page. While it runs, its icon sits in the menu bar at the top of the screen, near the clock: two photos, one over the other. If you closed the tab, click the icon and choose "Open the page".
+
+
+Check a folder
+--------------
+
+1. On the first tab, "Check a batch", click "Choose folder" and pick your photo folder. Subfolders are included. You can also type the folder path into the field under the buttons, for example /Users/Name/Pictures/Archive, and click "Check this folder".
+   The first time you check a folder in Documents, Desktop or Downloads, macOS asks whether Duplicate Photo Finder may open it. Click "Allow", or the program sees no photos.
+2. While the check runs, its stages are listed under the buttons, with the time since the start. The current stage is in bold, with how far it has got, for example "Analysing new photos 120 of 800, about 3 min left". When the check is finished, the list gives way to a line such as "800 photos checked" and the results.
+3. "Copies" are one shot in several files: the same frame, only cropped, compressed, mirrored or captioned. "Similar shots" are different photos of one place, or a burst. In each group of copies the program marks the best file "Keep" and the rest "Remove". Similar shots all stay marked "Keep"; mark the extra ones "Remove" yourself. The "Keep" and "Remove" buttons under each photo change its mark. Click a photo to open it full screen. "Compare large" under a group shows all its photos side by side, with the same buttons.
+4. To the right of the results is a panel titled "Move to «_дубли»": how many files go into that folder and how many stay in place. In a narrow browser window the panel sits at the bottom of the screen instead. Click the button with the number of files on it, for example "Move 12 files", then "Yes, move".
+5. The panel shows "✓ Moved 12 files" with their total size, and the moved photos leave the list on the page. The files are in the «_дубли» folder inside the checked folder, keeping the same subfolders. The "Open the «_дубли» folder" button opens it in Finder.
+
+If you change your mind, click "Put back" on the same panel. It puts back the last move. The button stays after the program restarts: check the same folder again and it is on the panel.
+
+You cannot drag photos or folders onto the page: pick the folder with "Choose folder". Single photos can be picked with "Choose files", but the program only shows those. Extra files can be moved only in a folder picked with "Choose folder" or typed into the path field.
+
+If you want to delete the «_дубли» folder, look through it first: the program can mistake a different photo for a copy.
+
+Photos in the Apple Photos app live inside its library, and the program does not touch it. To check them, export them from Photos into an ordinary folder.
+
+
+Update
+------
+
+In the top right corner, next to RU | EN, click the version number, for example "1.2", then click "Check for updates" in the small panel that opens. If a newer version is out, an "Open the download page" link appears; it opens the program's page on GitHub. Download the new version and install it the same way as the first one. Drag it onto Applications and agree to replace the old one. Your marks, history and moves stay: they live in the data folder, apart from the program.
+
+
+Quit
+----
+
+Click "Shut down" in the top right corner of the page, right of the tabs. Or click the program's icon in the menu bar and choose "Shut down". If you do not quit it, it keeps running in the background until the Mac shuts down.
+
+
+Where the program keeps its data, and full removal
+--------------------------------------------------
+
+The program remembers checked photos, so next time it does not process them again and can spot a repeat of an old photo. This data, your marks and the history are in the folder:
+
+  ~/Library/Application Support/Duplicate Photo Finder
+
+To open it: in Finder choose Go > Go to Folder, paste the path above and press Enter.
+
+Photos picked with "Choose files" are copied there too. To free the space: "History" tab > "Clear history". The program then also forgets the checked photos and no longer finds repeats of old ones.
+
+To remove the program completely:
+  1. Quit the program.
+  2. Drag Duplicate Photo Finder from Applications to the Trash.
+  3. Delete the Duplicate Photo Finder folder at the path above.
+
+The «_дубли» folders inside your photo folders stay: they hold your files.
+
+
+If it does not start
+--------------------
+
+- The warning that macOS cannot check the program keeps coming back: allow it as described under "Install", or from Terminal as a last resort.
+- The program's icon is crossed out, or macOS says the program is not supported: the Mac has an Intel processor or macOS older than 14. The program does not work on such a Mac.
+- The page did not open: open http://127.0.0.1:8777/ in your browser by hand. If it is empty, open the program again.
+- "Choose folder" opens no window: the picker may have opened behind the browser window. You can also type the folder path into the field under the buttons and click "Check this folder".

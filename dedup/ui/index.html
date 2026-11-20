@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Duplicate Photo Finder</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2044%2044'%3E%3Crect%20x='3'%20y='3'%20width='26'%20height='22'%20rx='4'%20fill='none'%20stroke='%232D63A3'%20stroke-width='3.5'/%3E%3Crect%20x='13'%20y='15'%20width='28'%20height='25'%20rx='4'%20fill='white'%20stroke='%232D63A3'%20stroke-width='3.5'/%3E%3Cpath%20d='M17%2036%2024%2027%2030%2032%2033%2029%2038%2036Z'%20fill='%232D63A3'/%3E%3Ccircle%20cx='33.5'%20cy='20.5'%20r='2.5'%20fill='%232D63A3'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -28,6 +29,18 @@ button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 32px;padding:20px 24px 0;max-width:1320px;margin:0 auto}
 h1{font-size:1.375rem;font-weight:600;margin:0;letter-spacing:-.01em}
+/* version: a small tag by the language switch; it opens a panel with the update check, nothing in the header moves */
+.ver{position:relative;align-self:center}
+.ver summary{list-style:none;cursor:pointer;font-size:.75rem;font-weight:600;color:var(--graphite);border:1px solid var(--rule);border-radius:6px;padding:2px 8px}
+.ver summary::-webkit-details-marker{display:none}
+.ver[open] summary,.ver summary:hover{color:var(--ink);border-color:var(--graphite)}
+.ver .vpanel{position:absolute;right:0;top:calc(100% + 8px);z-index:10;width:260px;background:var(--mount);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;box-shadow:0 10px 30px rgba(23,32,43,.16);font-size:.875rem}
+.ver .vpanel p{margin:0 0 10px}
+.ver .vpanel .btn{width:100%;padding:7px 12px;font-size:.875rem}
+.ver .vpanel .updmsg{margin:10px 0 0;min-height:1.25em}
+.ver .vpanel .updmsg a{color:var(--similar);font-weight:600}
+.ver .vpanel small{display:block;margin-top:10px;color:var(--graphite);font-size:.75rem;line-height:1.4}
+@media (max-width:600px){.hright{position:relative}.ver{position:static}.ver .vpanel{width:min(260px,calc(100vw - 32px))}}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:none;border:0;padding:8px 12px;border-bottom:2px solid transparent;cursor:pointer;color:var(--graphite)}
 nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
@@ -95,6 +108,7 @@ details summary{cursor:pointer;color:var(--graphite)}
 .lab{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start}
 @media (max-width:900px){.lab{grid-template-columns:1fr}}
 .labpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:220px;overflow:auto;padding:4px}
+.labpick .empty{grid-column:1/-1;padding:12px 4px;margin:0}
 .labpick button{padding:0;border:2px solid transparent;border-radius:3px;background:var(--mount);cursor:pointer}
 .labpick button[aria-pressed="true"]{border-color:var(--ink)}
 .labpick img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
@@ -170,25 +184,19 @@ table.t th{color:var(--graphite)}
 .pathrow input{flex:1 1 auto;min-width:0;color:var(--ink);font-size:.9375rem;padding:8px 10px;background:var(--mount)}
 .drop.compact .pathrow{margin:0;flex:1 1 100%;max-width:none}
 .drop.compact .pathrow label{display:none}
-.tidy{position:sticky;bottom:12px;z-index:3;border:1px solid var(--rule);background:var(--mount);border-radius:10px;padding:12px 16px;margin:24px 0 8px;box-shadow:0 6px 24px rgba(23,32,43,.16)}
-.tidyrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
-.tidy .tidysum{margin:0;font-weight:500;max-width:70ch}
-.tidy .row{gap:10px;align-items:center}
-.tidy .done,.tidy .err{font-size:.875rem;margin:8px 0 0}
-.tidy .done{color:var(--graphite)}
 .pick{display:flex;margin-top:6px;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
 .pick button{flex:1;border:0;background:transparent;color:var(--graphite);font:inherit;font-size:.8125rem;padding:5px 0;cursor:pointer}
 .pick button+button{border-left:1px solid var(--rule)}
 .pick button[data-v="keep"][aria-pressed="true"]{background:var(--ink);color:var(--mount);font-weight:600}
 .pick button[data-v="remove"][aria-pressed="true"]{background:var(--copy);color:#fff;font-weight:600}
 .slide.out img{opacity:.4;filter:grayscale(.6)}
+.slide.out .badge.keep{display:none}
 .slide.out .cap:first-of-type{text-decoration:line-through;color:var(--graphite)}
 .group[data-kind="old"]{border-color:var(--copy);border-style:dotted}
 .files{font-size:.8125rem;margin:8px 0 0;padding:0;list-style:none}
 .files li{overflow-wrap:anywhere}
 .files .keep{font-weight:600}
 .files .out{color:var(--graphite)}
-.viewer .keepbtn{margin-top:6px;font-size:.8125rem;padding:4px 10px}
 .drop.compact{padding:12px 16px;text-align:left;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
 .drop.compact p{margin:0;flex:1 1 220px}
 .answer{font-size:1.1875rem;line-height:1.4;font-weight:500;max-width:62ch;margin:18px 0 4px}
@@ -220,14 +228,73 @@ h2.sec small{font-size:.875rem;font-weight:400;color:var(--graphite)}
 .more{font-size:.875rem;color:var(--graphite)}
 .more summary{margin:4px 0}
 .namelist{columns:2 260px;font-size:.8125rem;color:var(--graphite);margin:6px 0 0;padding-left:18px}
-dialog.viewer{border:0;border-radius:12px;padding:0;max-width:min(1200px,96vw);width:96vw;background:var(--mount);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
-dialog.viewer::backdrop{background:rgba(18,21,24,.72)}
-.viewer header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;max-width:none;margin:0;border-bottom:1px solid var(--rule)}
-.viewer .big{display:flex;gap:16px;overflow-x:auto;padding:16px;scroll-snap-type:x mandatory}
-.viewer figure{margin:0;flex:0 0 auto;scroll-snap-align:start}
-.viewer img{display:block;height:min(58vh,520px);width:auto;max-width:calc((96vw - 64px) / 2);object-fit:contain;background:var(--table)}
-@media (max-width:700px){.viewer img{max-width:86vw;height:auto;max-height:60vh}}
-.viewer figcaption{font-size:.8125rem;color:var(--graphite);margin-top:6px;max-width:calc((96vw - 64px) / 2);overflow-wrap:anywhere}
+/* side column: the move panel on top, the profile below; on a narrow screen the move panel is a bar at the bottom */
+.side{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;display:grid;gap:14px;align-content:start}
+.side .panel{position:static;max-height:none;overflow:visible}
+.tidy{background:var(--mount);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow)}
+.tidy h2{font-size:1rem;margin:0 0 8px}
+.tidy p{margin:0 0 8px}
+.tidy .tplan{font-size:1rem;line-height:1.4}
+.tidy .tplan b{font-weight:600}
+.tidy .tsmall{font-size:.8125rem;color:var(--graphite);overflow-wrap:anywhere}
+.tidy .tact{display:grid;gap:8px;margin-top:12px}
+.tidy .tact .btn{width:100%}
+.tidy .tact .linkbtn{justify-self:start}
+.tidy .tconfirm{font-weight:500;overflow-wrap:anywhere}
+.tidy .err{font-size:.875rem}
+.tdone{margin:0 0 14px;padding:0 0 14px;border-bottom:1px solid var(--rule)}
+.tdone .tbig{font-size:1.0714rem;font-weight:600;display:flex;gap:8px;align-items:baseline}
+.tdone .tbig::before{content:"✓";flex:none}
+.tdone .row{gap:8px 14px;margin-top:4px}
+.tdone.fresh{animation:moved 1.6s ease-out}
+@keyframes moved{0%{background:color-mix(in srgb,var(--ink) 14%,transparent)}100%{background:transparent}}
+@media (prefers-reduced-motion:reduce){.tdone.fresh{animation:none}}
+.pnote{font-size:.8125rem;color:var(--copy);font-weight:500;margin:8px 0 0;max-width:60ch}
+@media (max-width:900px){
+  .side{position:static;max-height:none;overflow:visible}
+  .tidy{position:fixed;left:0;right:0;bottom:0;z-index:5;border-radius:0;border-top:1px solid var(--rule);padding:10px 16px;
+    box-shadow:0 -6px 24px rgba(23,32,43,.14);display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+  .tidy h2,.tidy .tsmall,.tidy .tkeep,.tdone .twhere{display:none}
+  .tidy p{margin:0}
+  .tidy .tplan{margin:0;flex:1 1 200px;font-size:.9375rem}
+  .tidy .tact{margin:0;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+  .tidy .tact .btn{width:auto}
+  .tdone{flex:1 1 100%;margin:0;padding:0 0 6px;border:0}
+  .tdone .tbig{font-size:.9375rem}
+  body.has-tidy main{padding-bottom:120px}
+}
+
+/* large view: one photo at full height, or the whole group side by side */
+dialog.viewer{--table:#0E1114;--mount:#181C20;--ink:#E7EBEF;--graphite:#9AA4B0;--rule:#30373F;--copy:#EE6B63;--similar:#7EADE3;--focus:#7EADE3;
+  border:0;padding:0;margin:0;width:100vw;height:100vh;max-width:none;max-height:none;background:var(--table);color:var(--ink);
+  display:none;flex-direction:column}
+dialog.viewer[open]{display:flex}
+dialog.viewer::backdrop{background:#0E1114}
+.viewer header{display:flex;gap:16px;align-items:center;padding:10px 16px;max-width:none;margin:0;border-bottom:1px solid var(--rule);flex:none}
+.viewer header b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.viewer .vnav{color:var(--graphite);font-size:.875rem;margin-right:auto;white-space:nowrap}
+#viewerBody{flex:1 1 auto;min-height:0}
+.vone{display:flex;flex-direction:column;height:100%}
+.vstage{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px}
+.vstage img{display:block;flex:1 1 auto;width:100%;height:100%;min-width:0;object-fit:contain}
+.vstep{flex:none;width:44px;height:88px;border:1px solid var(--rule);border-radius:8px;background:var(--mount);color:var(--ink);font-size:1.75rem;line-height:1;cursor:pointer}
+.vstep:disabled{opacity:.3;cursor:default}
+.vfoot{flex:none;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px 16px 14px;border-top:1px solid var(--rule)}
+.vfoot .vcap{margin:0;color:var(--graphite);font-size:.8125rem;flex:1 1 280px;overflow-wrap:anywhere}
+.vfoot .pick{margin:0;flex:0 0 220px}
+.vfoot .pick button{padding:8px 0;font-size:.875rem}
+.vfoot .pnote{flex:1 1 100%;margin:0}
+.vgrid{height:100%;overflow:auto;padding:16px;display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:14px;align-content:start}
+.vgrid figure{margin:0;min-width:0;position:relative}
+.vgrid .vimg{display:block;width:100%;padding:0;border:0;background:var(--mount);cursor:zoom-in;border-radius:4px;overflow:hidden}
+.vgrid img{display:block;width:100%;height:var(--imgh,50vh);object-fit:contain}
+.vgrid figcaption{font-size:.8125rem;color:var(--graphite);margin-top:6px;overflow-wrap:anywhere}
+.vgrid .pick{max-width:260px}
+.vgrid .pick button{padding:7px 0;font-size:.875rem}
+.viewer .badge{position:absolute;top:8px;left:8px;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--ink);color:var(--table)}
+.viewer .badge.hist{background:var(--copy);color:#fff}
+.vgrid .out img{opacity:.45;filter:grayscale(.6)}
+@media (max-width:600px){.viewer .vnav.hint{display:none}.viewer header b{margin-right:auto}.vstep{width:34px;height:64px}.vfoot .pick{flex:1 1 100%}.vgrid{padding:10px;gap:10px}}
 @media (max-width:600px){.answer{font-size:1.0714rem}.pathrow .row{flex-wrap:wrap}}
 </style>
 </head>
@@ -239,9 +306,14 @@ dialog.viewer::backdrop{background:rgba(18,21,24,.72)}
     <button role="tab" aria-selected="false" data-tab="profiles">Профили</button>
     <button role="tab" aria-selected="false" data-tab="lab">Лаборатория</button>
     <button role="tab" aria-selected="false" data-tab="history">История</button>
-    <button role="tab" aria-selected="false" data-tab="tests">Результаты тестов</button>
+    <button role="tab" aria-selected="false" data-tab="tests" hidden>Результаты тестов</button>
   </nav>
   <div class="hright">
+    <details class="ver" id="verBox"><summary id="appVer" aria-label="Версия программы"></summary>
+      <div class="vpanel"><p id="verLine"></p>
+        <button type="button" class="btn quiet" id="checkUpd">Проверить обновления</button>
+        <p class="updmsg" id="updMsg" role="status"></p>
+        <small>Программа узнаёт на GitHub только номер последней версии. Фото никуда не уходят.</small></div></details>
     <span class="langsw" role="group" aria-label="Язык"><button type="button" data-lang="ru" lang="ru">RU</button><button type="button" data-lang="en" lang="en">EN</button></span>
     <button type="button" class="linkbtn" id="quitApp" title="Остановить программу на этом компьютере">Выключить</button>
   </div>
@@ -267,7 +339,9 @@ dialog.viewer::backdrop{background:rgba(18,21,24,.72)}
       <div class="status" id="status" role="status"></div>
       <div id="result"></div>
     </div>
-    <aside class="panel" aria-label="Профиль проверки">
+    <aside class="side">
+    <div id="tidy" class="tidy" hidden aria-live="polite"></div>
+    <div class="panel" aria-label="Профиль проверки">
       <div class="ctl preset"><label for="preset">Профиль проверки</label>
         <select id="preset"></select>
         <p class="note" id="presetNote"></p>
@@ -275,11 +349,12 @@ dialog.viewer::backdrop{background:rgba(18,21,24,.72)}
       <h3>Что делает этот профиль</h3>
       <ul class="psum" id="presetSum"></ul>
       <button class="btn quiet" id="goProfiles" type="button">Настроить профили</button>
+    </div>
     </aside>
   </div>
   <dialog class="viewer" id="viewer" aria-label="Крупный просмотр">
-    <header><b id="viewerTitle"></b><button class="btn quiet" id="viewerClose">Закрыть</button></header>
-    <div class="big" id="viewerBody"></div>
+    <header><b id="viewerTitle"></b><span id="viewerNav" class="vnav"></span><button class="btn quiet" id="viewerClose">Закрыть</button></header>
+    <div id="viewerBody"></div>
   </dialog>
 </section>
 
@@ -521,7 +596,21 @@ const EN = {
   "SSCD {0}, PDQ {1}, одинаковых деталей {2}": "SSCD {0}, PDQ {1}, matching details {2}", "сходство {0}%": "similarity {0}%",
   "Уже проверялись раньше: {0}": "Checked before: {0}", "Ещё": "More", "Новая проверка: выберите папку": "New check: choose a folder",
   "В группе должен остаться хотя бы один файл. Сначала отметьте «Оставить» у другого фото": "At least one file must stay in a group. First mark another photo “Keep”",
+  "версия {0}": "version {0}", "Проверить обновления": "Check for updates", "Проверяю…": "Checking…",
+  "Вышла версия {0}.": "Version {0} is out.", "Открыть страницу загрузки": "Open the download page", "У вас версия {0}.": "You have version {0}.",
+  "Программа узнаёт на GitHub только номер последней версии. Фото никуда не уходят.": "The program only reads the newest version number from GitHub. Photos never leave this computer.", "Версия программы": "Program version", "У вас последняя версия": "You have the latest version",
   // moving files
+  "Это последняя копия снимка, которая остаётся. Чтобы убрать её, сначала нажмите «Оставить» у другой копии": "This is the last copy of the shot that stays. To remove it, first press “Keep” on another copy",
+  "Последний перенос {0}: {1}.": "Last move {0}: {1}.", "Открыть папку «{0}»": "Open the «{0}» folder", "Перенос в «{0}»": "Move to «{0}»",
+  "В папку «{0}»: <b>{1}</b>, {2}.": "Into the «{0}» folder: <b>{1}</b>, {2}.", "Остаются на месте: <b>{0}</b>.": "Staying in place: <b>{0}</b>.",
+  "Из них {0} в других местах.": "This includes {0} in other places.", "Папка: {0}. Ничего не удаляется, перенос можно отменить.": "Folder: {0}. Nothing is deleted, the move can be undone.",
+  "Переместить {0}": "Move {0}", "Нажмите «Убрать» у фото, которые не нужны. Они уйдут в папку «{0}» внутри проверенной папки.": "Press “Remove” on the photos you do not need. They go into the «{0}» folder inside the checked folder.",
+  "Переместить {0} в {1}?": "Move {0} to {1}?", "Перемещаю {0}…": "Moving {0}…", "Не получилось переместить: {0}": "Could not move: {0}",
+  "Перемещено {0}, {1}": "Moved {0}, {1}", "Папка: {0}. Перенесённые фото ушли из списка на странице.": "Folder: {0}. The moved photos left the list on this page.",
+  "Не удалось переместить: {0}. {1}": "Could not move: {0}. {1}", "Вернуть на место": "Put back", "Не получилось вернуть: {0}": "Could not put back: {0}",
+  "Возвращено на место: {0}": "Put back: {0}", "Нажмите на фото, чтобы открыть его во весь экран": "Click a photo to open it full screen",
+  "Открыть во весь экран: {0}": "Open full screen: {0}", "{0} из {1}": "{0} of {1}", "Предыдущее фото": "Previous photo", "Следующее фото": "Next photo",
+  "Сравнить все {0} рядом": "Compare all {0} side by side", "Из истории.": "From history.", "Лучший файл.": "Best file.",
   "Оставляем {0}, переносим {1} ({2}) в папку «{3}»": "Keeping {0}, moving {1} ({2}) into the «{3}» folder",
   ". Из них {0} в других местах": ". This includes {0} in other places", ". Ничего не удаляется": ". Nothing is deleted",
   "Отметьте «Убрать» у фото, которые не нужны. Они переместятся в папку «{0}» внутри проверенной папки": "Mark the photos you do not need with “Remove”. They will be moved into the «{0}» folder inside the checked folder",
@@ -533,6 +622,7 @@ const EN = {
   "Оставить только этот": "Keep only this one", "Оставляем только этот": "Keeping only this one",
   "Отмечено «не дубль». Эта пара больше не появится.": "Marked “not a duplicate”. This pair will not appear again.",
   // lab
+  "Здесь появятся фото, которые программа уже проверила. Проверьте папку на вкладке «Проверка пачки».": "Photos the program has already checked appear here. Check a folder on the “Check a batch” tab.",
   "Выберите фото и испортите его. Справа видно, что заметил каждый метод и какое решение принято.": "Pick a photo and damage it. The right side shows what each method noticed and what was decided.",
   "Изменения": "Changes", "Что сделать с фото": "What to do with the photo", "Отразить зеркально": "Mirror", "Надпись поверх": "Text on top",
   "например, Продаю": "for example, For sale", "Без изменений": "No changes",
@@ -844,7 +934,9 @@ $("#dirPath").addEventListener("input", syncPathBtn);
 
 function showResult(r){
   if (r.error) { $("#status").innerHTML = `<span class="err">${t`Ошибка: ${esc(r.error)}`}</span>`; return false; }
-  R = r; SEL = {...(r.choices || {})}; $("#status").textContent = ""; renderResult(); syncPathBtn(); return true;
+  if (r.root !== R?.root) MOVE_MSG = "";
+  R = r; SEL = {...(r.choices || {})}; samplesLoaded = false;  // the lab lists the photos of the newest check
+  $("#status").textContent = ""; renderResult(); syncPathBtn(); return true;
 }
 // album covers that music players put next to songs (Folder.jpg, AlbumArt_{…}_Large.jpg): pictures, not photos
 const COVER = /^(folder|albumartsmall|albumart_\{?[0-9a-f-]{36}\}?_(large|small))\.jpe?g$/i;
@@ -968,6 +1060,8 @@ let VIEW = [], PLAN = [], LAST_REVIEW = null, MOVE_MSG = "", FILTER = "all", FIL
 // keep/remove per photo: SEL = what the person picked (saved on the server), DEF_CH = the program's suggestion
 let SEL = {}, DEF_CH = {}, NOTE = "";
 const choiceOf = x => SEL[R.items[x].sha] ?? DEF_CH[x] ?? "keep";
+const picker = x => { const ch = choiceOf(x); return `<div class="pick" role="group" aria-label="${tr("Что сделать с файлом")}">
+      <button type="button" data-pick="${x}" data-v="keep" aria-pressed="${ch === "keep"}">${tr("Оставить")}</button><button type="button" data-pick="${x}" data-v="remove" aria-pressed="${ch === "remove"}">${tr("Убрать")}</button></div>`; };
 // result chips: "Всё" shows every section, any other chip leaves only its own
 function applyFilter(){
   document.querySelectorAll("#result .jump [data-f]").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === FILTER));
@@ -1043,8 +1137,6 @@ function renderResult(){
   const label = x => it[x].rel || it[x].name;
   // photos of a folder on disk get "Оставить / Убрать"; uploaded batches only show the suggestion
   const pickable = (x, extra) => !!R.root && it[x].new && extra === undefined;
-  const picker = x => { const ch = choiceOf(x); return `<div class="pick" role="group" aria-label="${tr("Что сделать с файлом")}">
-      <button type="button" data-pick="${x}" data-v="keep" aria-pressed="${ch === "keep"}">${tr("Оставить")}</button><button type="button" data-pick="${x}" data-v="remove" aria-pressed="${ch === "remove"}">${tr("Убрать")}</button></div>`; };
   const slide = (x, gi, keepX, extra) => `<div class="slide${pickable(x, extra) && choiceOf(x) === "remove" ? " out" : ""}" data-g="${gi}" data-x="${x}"${pickable(x, extra) ? ` data-px="${x}"` : ""} title="${tr("Открыть крупно")}">
       ${!it[x].new ? `<span class="badge">${tr(betterOld.has(x) && VIEW[gi]?.keep === null && ["copy", "exact"].includes(VIEW[gi]?.kind) ? "из истории, лучше" : "из истории")}</span>` : keepX === x ? `<span class="badge keep">${tr(pickable(x, extra) ? "лучший файл" : "оставить")}</span>` : ""}
       <img src="${img(it[x].path)}" alt="${esc(it[x].name)}" loading="lazy">
@@ -1055,7 +1147,7 @@ function renderResult(){
   const techTable = list => `<div class="why"><table>${list.map(({c,d}) => `<tr><td>${esc(it[c.i].name)} ↔ ${esc(it[c.j].name)}</td><td class="v-${d[0]}">${vn(d[0])}</td><td>${esc(rsn(d[1]))}</td><td>SSCD ${c.sscd.toFixed(2)}</td><td>PDQ ${c.pdq}</td><td>${t`точек ${c.orb}`}</td></tr>`).join("")}</table></div>`;
   const keepOf = {};
   const card = (g, kind, lead) => {
-    const gi = VIEW.push({g, kind}) - 1, ps = pairs(g);
+    const gi = VIEW.push({g, kind, pick: !!R.root}) - 1, ps = pairs(g);
     // one reason under the card: the strongest one in the group, in plain words
     const order = Object.keys(PLAIN), rank = r => { const k = order.indexOf(r.split("; ")[0]); return k < 0 ? 99 : k; };
     const own = ps.filter(({d}) => kind === "similar" ? d[0] === "similar" : d[0] !== "similar");
@@ -1138,7 +1230,6 @@ function renderResult(){
   if (R.seen_before.length) extra.push(`<details class="more"><summary>${t`Уже проверялись раньше: ${R.seen_before.length}`}</summary><ul class="namelist">${R.seen_before.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>`);
   if (extra.length) h += sec("more", `<h2 class="sec">${tr("Ещё")}</h2>` + extra.join(""));
 
-  if (R.root) h += `<div id="tidy"></div>`;
   $("#result").innerHTML = h;
   applyFilter();
 
@@ -1162,53 +1253,85 @@ function setChoices(map){  // {index: "keep" | "remove"}
   const it = R.items, out = {};
   Object.entries(map).forEach(([x, v]) => { SEL[it[x].sha] = v; out[it[x].sha] = v; });
   post("/api/choices", {scope: R.scope, choices: out});
-  document.querySelectorAll("#result [data-px]").forEach(el => {
+  document.querySelectorAll("[data-px]").forEach(el => {
     const ch = choiceOf(+el.dataset.px);
     el.classList.toggle("out", ch === "remove");
     el.querySelectorAll("[data-pick]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === ch));
   });
   buildPlan(); renderTidy();
 }
-function pick(x, v){
+function pick(x, v, el){
   const it = R.items;
   if (v === "remove") {
-    // a group keeps at least one file, unless an old photo from history stays in it anyway (and is still on disk)
-    const lonely = VIEW.some(({g}) => g.length > 1 && g.includes(x) && !g.some(y => !it[y].new && it[y].exists !== false) && g.every(y => y === x || choiceOf(y) === "remove"));
-    if (lonely) { NOTE = tr("В группе должен остаться хотя бы один файл. Сначала отметьте «Оставить» у другого фото"); return renderTidy(); }
+    // copies of one shot keep at least one file, unless an old photo from history stays anyway (and is still on disk).
+    // Only groups of copies count: a group of similar photos holds different shots, any of them may go
+    const lonely = VIEW.some(({g, kind}) => (kind === "copy" || kind === "exact") && g.length > 1 && g.includes(x)
+      && !g.some(y => !it[y].new && it[y].exists !== false) && g.every(y => y === x || choiceOf(y) === "remove"));
+    if (lonely) return flash(el, tr("Это последняя копия снимка, которая остаётся. Чтобы убрать её, сначала нажмите «Оставить» у другой копии"));
   }
   setChoices({[x]: v});
 }
+// a short note right where the person clicked
+function flash(el, text){
+  const host = el?.closest(".vfoot, .vgrid figure, .group"); if (!host) return;
+  host.querySelector(".pnote")?.remove();
+  const p = document.createElement("p"); p.className = "pnote"; p.setAttribute("role", "alert"); p.textContent = text;
+  const strip = host.querySelector(":scope > .strip");
+  strip ? strip.after(p) : host.append(p);
+  setTimeout(() => p.remove(), 7000);
+}
 function renderTidy(){
-  const box = $("#tidy"); if (!box) return;
-  const it = R.items, dup = CFG.dupDir || "_дубли";
+  const box = $("#tidy");
+  const on = !!R?.root;
+  box.hidden = !on; document.body.classList.toggle("has-tidy", on);
+  if (!on) return;
+  const it = R.items, dup = CFG.dupDir || "_дубли", where = `${R.root}/${dup}`;
   const bytes = PLAN.reduce((s, f) => s + (it.find(x => x.paths.includes(f.path))?.bytes || 0), 0);
   const extra = PLAN.filter(f => !f.forget).length;
   const kept = new Set(VIEW.filter(v => v.g.length > 1).flatMap(v => v.g).filter(k => it[k].new && choiceOf(k) === "keep")).size;
-  let h = `<div class="tidyrow"><p class="tidysum">`;
-  h += PLAN.length ? t`Оставляем ${plural(kept, "файл", "файла", "файлов")}, переносим ${plural(PLAN.length, "файл", "файла", "файлов")} (${mb(bytes)}) в папку «${esc(dup)}»` + (extra ? t`. Из них ${plural(extra, "одинаковый файл", "одинаковых файла", "одинаковых файлов")} в других местах` : "") + tr(". Ничего не удаляется")
-    : t`Отметьте «Убрать» у фото, которые не нужны. Они переместятся в папку «${esc(dup)}» внутри проверенной папки`;
-  h += `</p><div class="row" id="tidyAct">${PLAN.length ? `<button class="btn" id="tidyGo">${t`Переместить в «${esc(dup)}»`}</button>` : ""}</div></div>`;
-  if (NOTE) h += `<p class="err">${esc(NOTE)}</p>`;
-  if (R.last_move) h += `<p class="done">${t`Последний перенос ${esc(fmtDate(R.last_move.at))}: ${plural(R.last_move.files, "файл", "файла", "файлов")}. `}<button class="linkbtn" id="tidyUndo">${tr("Вернуть их на место")}</button></p>`;
-  if (MOVE_MSG) h += `<p class="done">${MOVE_MSG()}</p>`;
-  NOTE = "";
-  box.className = "tidy"; box.innerHTML = h;
+  let h = "";
+  // what the last move did stays on top until the next one: it answers "did it move or not"
+  if (MOVE_MSG) h += MOVE_MSG();
+  else if (R.last_move) h += `<div class="tdone"><p class="tsmall">${t`Последний перенос ${esc(fmtDate(R.last_move.at))}: ${plural(R.last_move.files, "файл", "файла", "файлов")}.`}</p>
+    <div class="row"><button class="linkbtn" data-reveal="1">${t`Открыть папку «${esc(dup)}»`}</button><button class="linkbtn" id="tidyUndo">${tr("Вернуть на место")}</button></div></div>`;
+  h += `<h2>${t`Перенос в «${esc(dup)}»`}</h2>`;
+  if (PLAN.length) {
+    h += `<p class="tplan">${t`В папку «${esc(dup)}»: <b>${plural(PLAN.length, "файл", "файла", "файлов")}</b>, ${mb(bytes)}.`}<span class="tkeep"> ${t`Остаются на месте: <b>${plural(kept, "файл", "файла", "файлов")}</b>.`}</span></p>`;
+    if (extra) h += `<p class="tsmall">${t`Из них ${plural(extra, "одинаковый файл", "одинаковых файла", "одинаковых файлов")} в других местах.`}</p>`;
+    h += `<p class="tsmall">${t`Папка: ${esc(where)}. Ничего не удаляется, перенос можно отменить.`}</p>
+      <div class="tact" id="tidyAct"><button class="btn" id="tidyGo">${t`Переместить ${plural(PLAN.length, "файл", "файла", "файлов")}`}</button></div>`;
+  } else h += `<p class="tplan">${t`Нажмите «Убрать» у фото, которые не нужны. Они уйдут в папку «${esc(dup)}» внутри проверенной папки.`}</p>`;
+  box.innerHTML = h;
+  const done = box.querySelector(".tdone.fresh"); if (done) setTimeout(() => done.classList.remove("fresh"), 1700);
+  box.querySelectorAll("[data-reveal]").forEach(b => b.onclick = async () => {
+    const r = await post("/api/reveal", {root: R.root, dup_dir: dup});
+    if (r.error) b.insertAdjacentHTML("afterend", ` <span class="err">${esc(r.error)}</span>`);
+  });
   $("#tidyGo") && ($("#tidyGo").onclick = () => {
-    $("#tidyAct").innerHTML = `<span>${t`Переместить ${plural(PLAN.length, "файл", "файла", "файлов")} в ${esc(R.root)}/${esc(dup)}?`}</span><button class="btn" id="tidyYes">${tr("Да, переместить")}</button><button class="linkbtn" id="tidyNo">${tr("Отмена")}</button>`;
+    $("#tidyAct").innerHTML = `<p class="tconfirm">${t`Переместить ${plural(PLAN.length, "файл", "файла", "файлов")} в ${esc(where)}?`}</p>
+      <button class="btn" id="tidyYes">${tr("Да, переместить")}</button><button class="linkbtn" id="tidyNo">${tr("Отмена")}</button>`;
     $("#tidyNo").onclick = renderTidy;
     $("#tidyYes").onclick = async () => {
-      $("#tidyAct").innerHTML = `<span>${tr("Переношу…")}</span>`;
+      $("#tidyAct").innerHTML = `<p class="tconfirm">${t`Перемещаю ${plural(PLAN.length, "файл", "файла", "файлов")}…`}</p>`;
       const r = await post("/api/move", {root: R.root, files: PLAN, dup_dir: dup});
       // a function, so the message follows a language switch
-      if (r.error) { MOVE_MSG = () => `<span class="err">${t`Не получилось: ${esc(r.error)}`}</span>`; return renderTidy(); }
-      MOVE_MSG = () => t`Перенесено в ${esc(r.dup_dir)}: ${plural(r.moved, "файл", "файла", "файлов")} (${mb(r.bytes)}).` + (r.failed.length ? ` <span class="err">${t`Не удалось: ${r.failed.length}.`}</span>` : "");
-      runDir(R.root);
+      if (r.error) { MOVE_MSG = () => `<div class="tdone"><p class="err">${t`Не получилось переместить: ${esc(r.error)}`}</p></div>`; return renderTidy(); }
+      let fresh = true;
+      MOVE_MSG = () => { const f = fresh; fresh = false;
+        return `<div class="tdone${f ? " fresh" : ""}"><p class="tbig">${t`Перемещено ${plural(r.moved, "файл", "файла", "файлов")}, ${mb(r.bytes)}`}</p>
+        <p class="tsmall twhere">${t`Папка: ${esc(r.dup_dir)}. Перенесённые фото ушли из списка на странице.`}</p>
+        ${r.failed.length ? `<p class="err">${t`Не удалось переместить: ${r.failed.length}. ${esc(r.failed[0].error)}`}</p>` : ""}
+        <div class="row">${r.moved ? `<button class="linkbtn" data-reveal="1">${t`Открыть папку «${esc(dup)}»`}</button><button class="linkbtn" id="tidyUndo">${tr("Вернуть на место")}</button>` : ""}</div></div>`; };
+      // the server dropped the moved files from this check: show it at once, without checking the folder again
+      if (r.result) { const keep = MOVE_MSG; showResult(r.result); MOVE_MSG = keep; renderTidy(); }
+      else runDir(R.root);
     };
   });
   $("#tidyUndo") && ($("#tidyUndo").onclick = async () => {
     const r = await post("/api/move/undo", {move_id: R.last_move.id});
-    if (r.error) { MOVE_MSG = () => `<span class="err">${t`Не получилось: ${esc(r.error)}`}</span>`; return renderTidy(); }
-    MOVE_MSG = () => t`Возвращено на место: ${plural(r.returned, "файл", "файла", "файлов")}.` + (r.failed.length ? ` <span class="err">${t`Не удалось вернуть: ${r.failed.length} (на старом месте уже лежит файл).`}</span>` : "");
+    if (r.error) { MOVE_MSG = () => `<div class="tdone"><p class="err">${t`Не получилось вернуть: ${esc(r.error)}`}</p></div>`; return renderTidy(); }
+    MOVE_MSG = () => `<div class="tdone"><p class="tbig">${t`Возвращено на место: ${plural(r.returned, "файл", "файла", "файлов")}`}</p>` +
+      (r.failed.length ? `<p class="err">${t`Не удалось вернуть: ${r.failed.length} (на старом месте уже лежит файл).`}</p>` : "") + `</div>`;
     runDir(R.root);
   });
 }
@@ -1221,27 +1344,88 @@ async function review(pairs, verdict){
   renderResult();
 }
 
-/* ---------- large view ---------- */
+/* ---------- large view: one photo at full height, or the whole group side by side ---------- */
+let VW = null;  // {gi, mode: "one" | "grid", x}
 function openViewer(gi, startX){
   const v = VIEW[gi]; if (!v || !R) return;
-  const it = R.items, g = v.g, canKeep = !!R.root && g.length > 1;
-  $("#viewerTitle").textContent = plural(g.length, "фото", "фото", "фото") + (g.length > 1 ? tr(" в группе") : "");
-  $("#viewerBody").innerHTML = g.map(x => `<figure data-x="${x}"><img src="${img(it[x].path, 1100)}" alt="${esc(it[x].name)}"><figcaption>${esc(it[x].rel || it[x].name)}, ${it[x].w}×${it[x].h}${it[x].bytes ? ", " + mb(it[x].bytes) : ""}${it[x].captured ? t`, снято ${esc(fmtDate(capDate(it[x].captured) || it[x].captured))}` : ""}${it[x].new ? "" : t`, из истории, загружено ${esc(fmtDate(it[x].at))}`}</figcaption>
-    ${canKeep && it[x].new ? `<button class="btn quiet keepbtn" data-keep="${x}">${tr("Оставить только этот")}</button>` : ""}</figure>`).join("");
-  $("#viewer").showModal();
-  const mark = () => $("#viewerBody").querySelectorAll("[data-keep]").forEach(o => {
-    const only = choiceOf(+o.dataset.keep) === "keep" && g.every(y => y === +o.dataset.keep || !it[y].new || choiceOf(y) === "remove");
-    o.textContent = tr(only ? "Оставляем только этот" : "Оставить только этот"); o.disabled = only; });
-  $("#viewerBody").querySelectorAll("[data-keep]").forEach(b => b.onclick = () => {
-    const k = +b.dataset.keep, m = {[k]: "keep"};
-    g.forEach(y => { if (y !== k && it[y].new) m[y] = "remove"; });
-    setChoices(m); mark();
-  });
-  mark();
-  if (startX != null) $(`#viewerBody figure[data-x="${startX}"]`)?.scrollIntoView({inline:"start", block:"nearest"});
+  VW = {gi, mode: startX == null && v.g.length > 1 ? "grid" : "one", x: startX ?? v.g[0]};
+  if (!$("#viewer").open) $("#viewer").showModal();
+  drawViewer();  // after opening: the grid measures the screen
 }
+function drawViewer(){
+  const v = VIEW[VW.gi], it = R.items, g = v.g, body = $("#viewerBody");
+  const can = x => v.pick && g.length > 1 && it[x].new;
+  const cap = x => `${esc(it[x].rel || it[x].name)}, ${it[x].w}×${it[x].h}${it[x].bytes ? ", " + mb(it[x].bytes) : ""}${it[x].captured ? t`, снято ${esc(fmtDate(capDate(it[x].captured) || it[x].captured))}` : ""}${it[x].new ? "" : t`, из истории, загружено ${esc(fmtDate(it[x].at))}`}`;
+  const badge = x => !it[x].new ? `<span class="badge hist">${tr("из истории")}</span>` : v.keep === x ? `<span class="badge">${tr("лучший файл")}</span>` : "";
+  const out = x => can(x) && choiceOf(x) === "remove" ? " out" : "";
+  if (VW.mode === "grid") {
+    $("#viewerTitle").textContent = plural(g.length, "фото", "фото", "фото") + tr(" в группе");
+    $("#viewerNav").textContent = tr("Нажмите на фото, чтобы открыть его во весь экран"); $("#viewerNav").className = "vnav hint";
+    body.className = "vgrid";
+    body.innerHTML = g.map(x => `<figure class="${out(x)}" data-x="${x}"${can(x) ? ` data-px="${x}"` : ""}>
+      <button type="button" class="vimg" data-one="${x}" aria-label="${t`Открыть во весь экран: ${esc(it[x].name)}`}"><img src="${img(it[x].path, 1200)}" alt="${esc(it[x].name)}"></button>${badge(x)}
+      <figcaption>${cap(x)}</figcaption>${can(x) ? picker(x) : ""}</figure>`).join("");
+    fitGrid();
+  } else {
+    const x = VW.x, k = g.indexOf(x);
+    $("#viewerTitle").textContent = it[x].name;
+    $("#viewerNav").textContent = g.length > 1 ? t`${k + 1} из ${g.length}` : ""; $("#viewerNav").className = "vnav";
+    body.className = "";
+    body.innerHTML = `<div class="vone${out(x)}" data-x="${x}"${can(x) ? ` data-px="${x}"` : ""}>
+      <div class="vstage">${g.length > 1 ? `<button type="button" class="vstep" data-step="-1" aria-label="${tr("Предыдущее фото")}"${k === 0 ? " disabled" : ""}>‹</button>` : ""}
+        <img src="${img(it[x].path, 2000)}" alt="${esc(it[x].name)}">
+        ${g.length > 1 ? `<button type="button" class="vstep" data-step="1" aria-label="${tr("Следующее фото")}"${k === g.length - 1 ? " disabled" : ""}>›</button>` : ""}</div>
+      <div class="vfoot"><p class="vcap">${!it[x].new ? `<b>${tr("Из истории.")}</b> ` : v.keep === x ? `<b>${tr("Лучший файл.")}</b> ` : ""}${cap(x)}</p>${can(x) ? picker(x) : ""}
+        ${g.length > 1 ? `<button type="button" class="btn quiet" data-grid="1">${t`Сравнить все ${g.length} рядом`}</button>` : ""}</div></div>`;
+  }
+}
+// the grid picks the number of columns that gives each photo the most room on this screen. A cell never gets
+// narrower than MIN_CELL: a big group then scrolls down instead of shrinking every photo to a stamp
+const MIN_CELL = 260;
+function fitGrid(){
+  const b = $("#viewerBody"); if (!VW || VW.mode !== "grid") return;
+  const it = R.items, g = VIEW[VW.gi].g, n = g.length, gap = 14, capH = 96;
+  const W = b.clientWidth - 32, H = b.clientHeight - 32;
+  // the usual shape of the group's photos (height / width), so a landscape group gets wide, low cells
+  const asp = g.map(x => it[x].h / it[x].w || 0.75).sort((a, c) => a - c)[Math.floor(n / 2)];
+  const maxC = Math.max(1, Math.min(n, Math.floor((W + gap) / (Math.min(MIN_CELL, W) + gap))));
+  let best = [1, 0, 0];
+  for (let c = 1; c <= maxC; c++) {
+    const r = Math.ceil(n / c), w = (W - gap * (c - 1)) / c, h = (H - gap * (r - 1)) / r - capH;
+    const shown = Math.min(w, h / asp);  // width of the picture inside its cell
+    if (shown > best[1]) best = [c, shown, h];
+  }
+  let [c, shown, h] = best;
+  // everything does not fit with a decent size: as many columns as fit, cells as tall as the photos need
+  if (shown < 220) { c = maxC; const w = (W - gap * (c - 1)) / c; h = Math.min(H - capH, w * asp); }
+  b.style.setProperty("--cols", c);
+  b.style.setProperty("--imgh", Math.floor(Math.max(140, h)) + "px");
+}
+window.addEventListener("resize", fitGrid);
+$("#viewerBody").addEventListener("click", e => {
+  const pk = e.target.closest("[data-pick]"); if (pk) return pick(+pk.dataset.pick, pk.dataset.v, pk);
+  const one = e.target.closest("[data-one]"); if (one) { VW.mode = "one"; VW.x = +one.dataset.one; return drawViewer(); }
+  const st = e.target.closest("[data-step]"); if (st) return step(+st.dataset.step);
+  if (e.target.closest("[data-grid]")) { VW.mode = "grid"; drawViewer(); }
+});
+function step(d){
+  const g = VIEW[VW.gi].g, k = g.indexOf(VW.x) + d;
+  if (VW.mode !== "one" || k < 0 || k >= g.length) return;
+  VW.x = g[k]; drawViewer();
+}
+$("#viewer").addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+  if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+});
+// on a phone a swipe goes to the next or previous photo
+let TOUCH = null;
+$("#viewerBody").addEventListener("touchstart", e => { TOUCH = e.touches.length === 1 ? e.touches[0].clientX : null; }, {passive: true});
+$("#viewerBody").addEventListener("touchend", e => {
+  if (TOUCH == null) return; const dx = e.changedTouches[0].clientX - TOUCH; TOUCH = null;
+  if (Math.abs(dx) > 60) step(dx < 0 ? 1 : -1);
+});
+$("#viewer").addEventListener("close", () => { VW = null; $("#viewerBody").innerHTML = ""; });
 $("#viewerClose").onclick = () => $("#viewer").close();
-$("#viewer").addEventListener("click", e => { if (e.target === $("#viewer")) $("#viewer").close(); });
 $("#result").addEventListener("click", e => {
   const f = e.target.closest(".jump [data-f]");
   if (f) {
@@ -1250,7 +1434,7 @@ $("#result").addEventListener("click", e => {
     return;
   }
   if (e.target.closest("[data-goprofiles]")) return $("#goProfiles").click();
-  const pk = e.target.closest("[data-pick]"); if (pk) return pick(+pk.dataset.pick, pk.dataset.v);
+  const pk = e.target.closest("[data-pick]"); if (pk) return pick(+pk.dataset.pick, pk.dataset.v, pk);
   const o = e.target.closest("[data-open]"); if (o) return openViewer(+o.dataset.open);
   const nd = e.target.closest("[data-notdup]");
   if (nd) {
@@ -1293,8 +1477,8 @@ $("#labReset").onclick = () => { renderLabCtl(); $("#mirror").checked = false; $
 async function loadSamples(){
   if (samplesLoaded) return;
   const r = await getJSON("/api/samples");
-  samplesLoaded = true;
-  if (!r.files.length) { $("#pick").innerHTML = `<p class="empty">${tr("Сначала проверьте пачку на первой вкладке — её фото появятся здесь.")}</p>`; return; }
+  samplesLoaded = r.files.length > 0;  // empty: ask again next time the tab opens, a check may have run since
+  if (!r.files.length) { $("#pick").innerHTML = `<p class="empty">${tr("Здесь появятся фото, которые программа уже проверила. Проверьте папку на вкладке «Проверка пачки».")}</p>`; return; }
   $("#pick").innerHTML = r.files.map(f => `<button aria-pressed="false" data-path="${esc(f.path)}" title="${esc(f.name)}"><img src="${img(f.path,160)}" alt="${esc(f.name)}" loading="lazy"></button>`).join("");
   $("#pick").querySelectorAll("button").forEach(b => b.onclick = () => {
     $("#pick").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
@@ -1388,7 +1572,29 @@ async function loadTests(){
   }).join("");
   requestAnimationFrame(() => document.querySelectorAll("#testsOut .group").forEach(g => mark(g, g.dataset.kind)));
 }
-{ const t = location.hash.slice(1); const b = document.querySelector(`nav button[data-tab="${t}"]`); if (b) b.click(); }
+{ const t = location.hash.slice(1); const b = document.querySelector(`nav button[data-tab="${t}"]`); if (b && !b.hidden) b.click(); }
+getJSON("/api/tests").then(r => {
+  if (!r.reports?.length) return;
+  const b = document.querySelector('nav button[data-tab="tests"]'); b.hidden = false;
+  if (location.hash === "#tests") b.click();
+}).catch(() => {});
+let APP_VER = "";
+const drawVer = () => { $("#appVer").textContent = APP_VER; $("#verBox").hidden = !APP_VER; $("#verLine").textContent = APP_VER ? t`У вас версия ${APP_VER}.` : ""; };
+getJSON("/api/version").then(r => { APP_VER = r.version || ""; drawVer(); }).catch(() => {});
+// the panel closes on a click elsewhere or Escape
+document.addEventListener("click", e => { if ($("#verBox").open && !e.target.closest("#verBox")) $("#verBox").open = false; });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#verBox").open) { $("#verBox").open = false; $("#appVer").focus(); } });
+// the only moment the program goes online: it asks GitHub for the newest version number, nothing else
+let UPD = null;  // a function, so the answer follows a language switch
+const drawUpd = () => { $("#updMsg").innerHTML = UPD ? UPD() : ""; };
+$("#checkUpd").onclick = async () => {
+  UPD = () => esc(tr("Проверяю…")); drawUpd();
+  const r = await post("/api/update_check");
+  if (r.error) UPD = () => `<span class="err">${esc(r.error)}</span>`;
+  else if (r.newer) UPD = () => t`Вышла версия ${esc(r.latest)}.` + ` <a href="${esc(r.page)}" target="_blank" rel="noopener">${tr("Открыть страницу загрузки")}</a>`;
+  else UPD = () => esc(tr("У вас последняя версия"));
+  drawUpd();
+};
 if (/Win/.test(navigator.platform)) $("#dirPath").placeholder = "C:\\Users\\имя\\Pictures\\Архив";
 $("#quitApp").onclick = async () => {
   if (!confirm(tr("Выключить программу? Чтобы снова проверять фото, её нужно будет запустить заново."))) return;
@@ -1418,6 +1624,7 @@ function setLang(l){
   if (!$("#tab-history").hidden) loadHistory();
   if (!$("#tab-tests").hidden) loadTests();
   if ($("#pick .empty")) { samplesLoaded = false; if (!$("#tab-lab").hidden) loadSamples(); }
+  drawVer(); drawUpd();
   trDom();  // a status line or message set before the switch
 }
 document.querySelectorAll(".langsw [data-lang]").forEach(b => b.onclick = () => setLang(b.dataset.lang));

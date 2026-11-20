@@ -1,0 +1,97 @@
+Duplicate Photo Finder for Windows
+==================================
+
+The program finds identical and similar shots in a photo folder and helps you set the extra ones aside. It recognises a copy even when the photo was cropped, recompressed, mirrored, captioned or screenshotted. A burst of shots taken one after another is not treated as copies.
+
+Your photos never leave this computer: the program works offline. It goes online only when you click "Check for updates": it then reads the newest version number from GitHub and sends nothing else. It never deletes anything. Extra files go into a folder named «_дубли» ("duplicates"), and one button puts them back.
+
+The interface is in English and Russian. Switch with the RU and EN buttons in the top right corner of the page.
+
+Nothing needs installing: everything the program needs is in its folder.
+
+
+Will it run on your computer
+----------------------------
+
+You need 64-bit Windows 10 or 11. To check: Settings > System > About. The "System type" line should start with "64-bit operating system".
+
+Supported formats: JPG, PNG, WebP, HEIC (iPhone photos), TIFF and BMP. Camera RAW files and videos are skipped.
+
+
+Install
+-------
+
+1. Right-click the downloaded archive DuplicatePhotoFinder-1.2-windows-x64.zip and choose "Properties". The "General" tab may have an "Unblock" checkbox at the bottom: if it is there, tick it and click "OK". If there is no checkbox, go on to step 2. Without this step Windows may show more warnings at start.
+2. Right-click the archive again, choose "Extract All" and pick where to keep the program, for example Documents. A folder named DuplicatePhotoFinder appears there. The program does not run from inside the archive.
+3. Open the DuplicatePhotoFinder folder and double-click start.bat. If Windows hides file extensions, it shows as "start" with a gear icon.
+
+The program is not signed, so on the first start Windows may show one of two warnings:
+  - "Windows protected your PC": click the small "More info" link, then the "Run anyway" button;
+  - "Open File - Security Warning": click "Run".
+If no warning appears, nothing more is needed.
+
+
+How to tell it works
+--------------------
+
+A black window with text opens. This window is the program. Its first line is "Duplicate Photo Finder запускается", followed by the same text in English. A few seconds later the line "Open: http://127.0.0.1:8777/" appears and the Duplicate Photo Finder page opens in your browser. If another program already uses the number 8777, the last digit differs.
+
+Keep the black window open while you work: closing it shuts the program down. You can minimise it.
+
+The program's icon also appears by the clock in the bottom right corner: two photos, one over the other. If you do not see it, click the "^" arrow next to the clock: Windows puts new icons there. Clicking the icon opens the program's page if you closed the tab. Right-clicking it shows a menu with "Shut down".
+
+
+Check a folder
+--------------
+
+1. On the first tab, "Check a batch", click "Choose folder" and pick your photo folder. Subfolders are included. You can also type the folder path into the field under the buttons, for example C:\Users\Name\Pictures\Archive, and click "Check this folder".
+2. While the check runs, its stages are listed under the buttons, with the time since the start. The current stage is in bold, with how far it has got, for example "Analysing new photos 120 of 800, about 3 min left". When the check is finished, the list gives way to a line such as "800 photos checked" and the results.
+3. "Copies" are one shot in several files: the same frame, only cropped, compressed, mirrored or captioned. "Similar shots" are different photos of one place, or a burst. In each group of copies the program marks the best file "Keep" and the rest "Remove". Similar shots all stay marked "Keep"; mark the extra ones "Remove" yourself. The "Keep" and "Remove" buttons under each photo change its mark. Click a photo to open it full screen. "Compare large" under a group shows all its photos side by side, with the same buttons.
+4. To the right of the results is a panel titled "Move to «_дубли»": how many files go into that folder and how many stay in place. In a narrow browser window the panel sits at the bottom of the screen instead. Click the button with the number of files on it, for example "Move 12 files", then "Yes, move".
+5. The panel shows "✓ Moved 12 files" with their total size, and the moved photos leave the list on the page. The files are in the «_дубли» folder inside the checked folder, keeping the same subfolders. The "Open the «_дубли» folder" button opens it in File Explorer.
+
+If you change your mind, click "Put back" on the same panel. It puts back the last move. The button stays after the program restarts: check the same folder again and it is on the panel.
+
+You cannot drag photos or folders onto the page: pick the folder with "Choose folder". Single photos can be picked with "Choose files", but the program only shows those. Extra files can be moved only in a folder picked with "Choose folder" or typed into the path field.
+
+If you want to delete the «_дубли» folder, look through it first: the program can mistake a different photo for a copy.
+
+
+Update
+------
+
+In the top right corner, next to RU | EN, click the version number, for example "1.2", then click "Check for updates" in the small panel that opens. If a newer version is out, an "Open the download page" link appears; it opens the program's page on GitHub. Download the new version and install it the same way as the first one. Shut the program down and replace the old DuplicatePhotoFinder folder with the new one. Your marks, history and moves stay: they live in the data folder, apart from the program.
+
+
+Quit
+----
+
+Click "Shut down" in the top right corner of the page, right of the tabs. Or right-click the program's icon by the clock and choose "Shut down". You can also close the black window.
+
+
+Where the program keeps its data, and full removal
+--------------------------------------------------
+
+The program remembers checked photos, so next time it does not process them again and can spot a repeat of an old photo. This data, your marks and the history are in the folder:
+
+  %LOCALAPPDATA%\Duplicate Photo Finder
+
+To open it, paste this path into the File Explorer address bar and press Enter.
+
+Photos picked with "Choose files" are copied there too. To free the space: "History" tab > "Clear history". The program then also forgets the checked photos and no longer finds repeats of old ones.
+
+To remove the program completely:
+  1. Quit the program.
+  2. Delete the DuplicatePhotoFinder folder.
+  3. Delete the Duplicate Photo Finder folder at the path above.
+
+The «_дубли» folders inside your photo folders stay: they hold your files.
+
+
+If it does not start
+--------------------
+
+- The black window closes at once or shows an error: check that the archive was extracted with "Extract All", not opened without extracting.
+- An error mentions msvcp140.dll or vcruntime140.dll: install the Microsoft Visual C++ Redistributable for x64 from Microsoft's website (search for "Visual C++ Redistributable latest") and run start.bat again.
+- The page did not open but the black window is open: open the address from the "Open: http://127.0.0.1:..." line in your browser.
+- "Choose folder" opens no window: the picker may have opened behind the browser window. You can also type the folder path into the field under the buttons and click "Check this folder".

@@ -24,6 +24,7 @@ coll = COLLECT(exe, a.binaries, a.datas, name="DuplicatePhotoFinder")
 app = BUNDLE(
     coll,
     name="Duplicate Photo Finder.app",
+    icon=os.path.join(SPECPATH, "icon.icns"),  # drawn by packaging/make_icon.py
     bundle_identifier="io.github.dwenlvov.duplicate-photo-finder",
     info_plist={
         "CFBundleName": "Duplicate Photo Finder",

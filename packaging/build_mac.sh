@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds builds/DuplicatePhotoFinder-<VERSION>-mac-arm64.dmg: a disk image with "Duplicate Photo Finder.app", a link to Applications, README.txt. Run on a Mac with Apple Silicon:
+# Builds builds/DuplicatePhotoFinder-<VERSION>-mac-arm64.dmg: a disk image with "Duplicate Photo Finder.app", a link to Applications, README.ru.txt and README.en.txt. Run on a Mac with Apple Silicon:
 #   bash packaging/build_mac.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -22,7 +22,9 @@ rm -rf "$WORK"; mkdir -p "$WORK/zip/$NAME" builds
 "$VENV/bin/python" -m PyInstaller --noconfirm --clean --log-level WARN \
   --distpath "$WORK/dist" --workpath "$WORK/work" packaging/mac.spec
 cp -R "$WORK/dist/$NAME.app" "$WORK/zip/$NAME/"
-cp packaging/readme/mac.txt "$WORK/zip/$NAME/README.txt"
+# the guide in both languages of the page
+cp packaging/readme/mac.txt "$WORK/zip/$NAME/README.ru.txt"
+cp packaging/readme/mac.en.txt "$WORK/zip/$NAME/README.en.txt"
 cp LICENSE THIRD_PARTY_NOTICES.md "$WORK/zip/$NAME/"
 # GitHub refuses files over 100 MB in a repository
 # a link to Applications next to the app: the person drags the app onto it

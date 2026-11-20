@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -58,7 +59,20 @@ def _allowed(path: str) -> bool:
         return True
     roots = [os.path.realpath(os.path.dirname(r)) for r in TESTS]
     extra = [os.path.realpath(x) for x in os.environ.get("DEDUP_IMAGE_ROOTS", "").split(os.pathsep) if x]
-    return any(p.startswith(r) for r in roots + extra + sorted(SCANNED_ROOTS))
+    if any(p.startswith(r) for r in roots + extra + sorted(SCANNED_ROOTS)):
+        return True
+    # a photo the program itself read in an earlier check (it shows up "из истории" after a restart,
+    # when its folder has not been checked again yet)
+    if not DB.exists():
+        return False
+    db = sqlite3.connect(str(DB))
+    try:
+        return bool(db.execute("SELECT 1 FROM files WHERE path=?", (path,)).fetchone()
+                    or db.execute("SELECT 1 FROM photos WHERE path=? LIMIT 1", (path,)).fetchone())
+    except sqlite3.Error:
+        return False
+    finally:
+        db.close()
 
 
 @lru_cache(maxsize=4096)
@@ -439,7 +453,79 @@ def api_move(root: str, files: list[dict], dup_name: str | None = None) -> dict:
                 st.commit()
             failed.append(dict(path=f["path"], error=str(e)))
     st.commit()
-    return dict(move_id=mid, moved=moved, bytes=size, failed=failed, dup_dir=dup)
+    # the checks of this folder kept in memory forget the moved files: the page shows the result at once,
+    # without checking the whole folder again, and a reloaded page does not bring the moved photos back
+    bad = {f["path"] for f in failed}
+    gone = {f["path"] for f in files if f["path"] not in bad}
+    last = dict(id=mid, files=moved, at=now.isoformat()) if moved else None
+    result = None
+    for job in sorted(JOBS.values(), key=lambda j: j["started"]):
+        r = job.get("result")
+        if job["stage"] == "done" and r and r.get("root") == root:
+            job["result"] = result = _drop_paths(r, gone, last)
+    return dict(move_id=mid, moved=moved, bytes=size, failed=failed, dup_dir=dup,
+                result=_fresh(result) if result else None)
+
+
+def _drop_paths(r: dict, gone: set[str], last_move: dict | None) -> dict:
+    """A finished folder check without the files that were just moved away. A photo of the folder whose every
+    copy moved leaves the result together with its pairs; a photo that still has a file left keeps the rest."""
+    root = r["root"]
+    keep, items = {}, []
+    for k, it in enumerate(r["items"]):
+        left = [p for p in it["paths"] if p not in gone]
+        if it["new"] and not left:
+            continue
+        if len(left) != len(it["paths"]):
+            it = it | dict(paths=left, path=left[0], name=os.path.basename(left[0]), rel=os.path.relpath(left[0], root))
+        keep[k] = len(items)
+        items.append(it)
+    cands = [c | dict(i=keep[c["i"]], j=keep[c["j"]]) for c in r["candidates"] if c["i"] in keep and c["j"] in keep]
+    same = [ps for ps in ([p for p in ps if p not in gone] for ps in r.get("same_file", [])) if len(ps) > 1]
+    return r | dict(items=items, candidates=cands, same_file=same, last_move=last_move or r.get("last_move"))
+
+
+REPO_PAGE = "https://github.com/dwenlvov/duplicate-photo-finder"
+LATEST_URL = "https://raw.githubusercontent.com/dwenlvov/duplicate-photo-finder/main/VERSION"
+
+
+def _ver(v: str) -> tuple:
+    return tuple(int(x) for x in re.findall(r"\d+", v)) or (0,)
+
+
+def api_update_check() -> dict:
+    """The "Проверить обновления" button: the only time the program goes online. It reads the number of the newest
+    version published on GitHub and sends nothing about the photos."""
+    import ssl
+    import urllib.request
+    ctx = ssl.create_default_context()
+    if sys.platform == "darwin" and os.path.exists("/etc/ssl/cert.pem"):  # the bundled Python may come without CA certificates
+        ctx.load_verify_locations("/etc/ssl/cert.pem")
+    try:
+        req = urllib.request.Request(LATEST_URL, headers={"User-Agent": "DuplicatePhotoFinder/" + VERSION})
+        with urllib.request.urlopen(req, timeout=10, context=ctx) as r:
+            latest = r.read(64).decode("utf-8", "replace").strip()
+    except Exception as e:
+        raise ConnectionError(_t("Не удалось связаться с GitHub. Проверьте интернет и попробуйте ещё раз",
+                                 "Could not reach GitHub. Check the internet connection and try again")) from e
+    if not re.fullmatch(r"\d+(\.\d+){0,3}", latest):
+        raise ValueError(_t("GitHub ответил непонятно, проверьте позже", "GitHub sent an unexpected answer, try later"))
+    return dict(current=VERSION, latest=latest, newer=_ver(latest) > _ver(VERSION), page=REPO_PAGE)
+
+
+def api_reveal(root: str, dup_name: str | None = None) -> dict:
+    """Open the folder of moved files in Finder (Explorer on Windows), so a person sees the move happened."""
+    root = os.path.realpath(root)
+    dup = os.path.join(root, dup_dir_name(dup_name))
+    if root not in SCANNED_ROOTS or not os.path.isdir(dup):
+        raise ValueError(_t("Папки с перенесёнными файлами пока нет", "There is no folder of moved files yet"))
+    if sys.platform == "darwin":
+        subprocess.run(["open", dup], check=True, timeout=20)
+    elif sys.platform == "win32":
+        subprocess.Popen(["explorer", dup])
+    else:
+        subprocess.run(["xdg-open", dup], check=True, timeout=20)
+    return dict(ok=True)
 
 
 def api_move_undo(mid: str) -> dict:
@@ -620,7 +706,15 @@ class H(BaseHTTPRequestHandler):
                 for r in [UPLOADS] + [Path(x) for x in os.environ.get("DEDUP_IMAGE_ROOTS", "").split(os.pathsep) if x]:
                     if r.exists():
                         files += features.list_images(str(r))[:400]
-                return self._json(dict(files=[dict(path=f, name=os.path.basename(f)) for f in files]))
+                # photos of checked folders too: the most recently checked ones that are still on disk
+                seen = set(files)
+                for (f,) in _store().db.execute("SELECT path FROM photos ORDER BY ingested_at DESC LIMIT 2000"):
+                    if len(files) >= 400:
+                        break
+                    if f not in seen and os.path.exists(f):
+                        seen.add(f)
+                        files.append(f)
+                return self._json(dict(files=[dict(path=f, name=os.path.basename(f)) for f in files[:400]]))
             return self._json({"error": "not found"}, 404)
         except Exception as e:
             return self._json({"error": str(e)}, 500)
@@ -665,6 +759,11 @@ class H(BaseHTTPRequestHandler):
                 return self._json(api_move_undo(b["move_id"]))
             if u.path == "/api/choose_folder":
                 return self._json(api_choose_folder())
+            if u.path == "/api/update_check":
+                return self._json(api_update_check())
+            if u.path == "/api/reveal":
+                b = json.loads(self._body() or b"{}")
+                return self._json(api_reveal(b["root"], b.get("dup_dir")))
             if u.path == "/api/quit":  # the "Выключить программу" button: the installed app has no window to close
                 threading.Timer(0.3, self.server.shutdown).start()
                 return self._json({"ok": True})

@@ -4,7 +4,7 @@
 
 Duplicate Photo Finder finds identical and similar photos in a folder and helps you set the extra copies aside. It recognizes a copy even when the photo was cropped, recompressed, mirrored, captioned or captured as a screenshot. Burst shots taken one after another are not treated as copies.
 
-Everything runs on your computer: photos are never uploaded, and no internet connection is needed. The program never deletes anything. It moves extra files into a folder named `_дубли` ("duplicates"), and one button puts them back.
+Everything runs on your computer: photos are never uploaded, and no internet connection is needed to work. It goes online only when you click "Check for updates": it then reads the newest version number from GitHub and sends nothing else. The program never deletes anything. It moves extra files into a folder named `_дубли` ("duplicates"), and one button puts them back.
 
 The interface is in English and Russian. It opens in Russian if your system language is Russian, otherwise in English; switch at any time with RU | EN in the top right corner.
 
@@ -16,14 +16,14 @@ The interface is in English and Russian. It opens in Russian if your system lang
 
 | Version | Mac | Windows |
 |---|---|---|
-| 1.1 | [Download for Mac](https://github.com/dwenlvov/duplicate-photo-finder/raw/main/builds/DuplicatePhotoFinder-1.1-mac-arm64.dmg) (87 MB) | [Download for Windows](https://github.com/dwenlvov/duplicate-photo-finder/raw/main/builds/DuplicatePhotoFinder-1.1-windows-x64.zip) (97 MB) |
+| 1.2 | [Download for Mac](https://github.com/dwenlvov/duplicate-photo-finder/raw/main/builds/DuplicatePhotoFinder-1.2-mac-arm64.dmg) (87 MB) | [Download for Windows](https://github.com/dwenlvov/duplicate-photo-finder/raw/main/builds/DuplicatePhotoFinder-1.2-windows-x64.zip) (97 MB) |
 
 - **Mac:** Apple silicon (M1 or later) and macOS 14 Sonoma or later. Macs with an Intel processor are not supported. To check, open the Apple menu > About This Mac and look at the line labeled "Chip".
 - **Windows:** Windows 10 or 11, 64-bit. To check, open Settings > System > About and look at the line labeled "System type".
 
 Supported formats: JPG, PNG, WebP, HEIC (iPhone photos), TIFF and BMP. Camera RAW files and videos are skipped.
 
-Each download also contains a `README.txt` with more detail, in Russian. Everything you need is on this page.
+Each download also contains the same guide as `README.en.txt` (English) and `README.ru.txt` (Russian), with more detail on first start and removal.
 
 ## Install on a Mac
 
@@ -41,7 +41,7 @@ After 10 to 20 seconds a new tab titled Duplicate Photo Finder opens in your def
 
 ## Install on Windows
 
-1. Find the downloaded `DuplicatePhotoFinder-1.1-windows-x64.zip`, usually in your Downloads folder. Select it and press Alt+Enter to open Properties (or right-click > Properties; on Windows 11 it may be under "Show more options"). If the General tab has an "Unblock" checkbox at the bottom, tick it and click OK. Without this, Windows shows more warnings later.
+1. Find the downloaded `DuplicatePhotoFinder-1.2-windows-x64.zip`, usually in your Downloads folder. Select it and press Alt+Enter to open Properties (or right-click > Properties; on Windows 11 it may be under "Show more options"). If the General tab has an "Unblock" checkbox at the bottom, tick it and click OK. Without this, Windows shows more warnings later.
 2. Right-click the archive > "Extract All", choose a place to keep the program, such as Documents, and click "Extract". A folder named DuplicatePhotoFinder appears there. The program does not run from inside the archive.
 3. Open the DuplicatePhotoFinder folder. It contains a few files and two folders. Double-click `start.bat`. If Windows hides file extensions, it shows as "start" with a gear icon.
 
@@ -57,15 +57,19 @@ A black window opens with a few lines of text in Russian and English. Within a f
 1. On the "Check a batch" tab, click "Choose folder" and pick your photo folder. Subfolders are included. The folder picker may open behind the browser window; if nothing seems to happen, look for it there.
    On a Mac, the first time you check a folder in Documents, Desktop or Downloads, macOS asks whether Duplicate Photo Finder may access it. Click "Allow", or the program sees no photos.
 2. While it runs, the stages of the check are listed under the buttons. The current stage shows how far it has got, for example "Analysing new photos 120 of 800". When the check is finished, the list gives way to a line such as "800 photos checked", with the results below it.
-3. The results are grouped. "Copies" are the same photo saved more than once, possibly cropped, compressed or mirrored. "Similar shots" are different photos of the same place, or a burst. In each group of copies the program marks one file "Keep", usually the largest, and the rest "Remove". Similar shots are all marked "Keep" by default. Each photo has a "Keep" and a "Remove" button under it to change its mark.
-4. A panel stays fixed at the bottom of the screen and shows how many files stay and how many will be moved. Click "Move to «_дубли»" on it, then "Yes, move".
-5. The panel then shows "Moved to ..." with the number of files. The files marked "Remove" are now in a `_дубли` folder inside the folder you checked, keeping the same subfolders. You can open it in Finder or File Explorer like any folder.
+3. The results are grouped. "Copies" are the same photo saved more than once, possibly cropped, compressed or mirrored. "Similar shots" are different photos of the same place, or a burst. In each group of copies the program marks one file "Keep", usually the largest, and the rest "Remove". Similar shots are all marked "Keep" by default. Each photo has a "Keep" and a "Remove" button under it to change its mark. Click a photo to open it full screen. "Compare large" under a group shows all its photos side by side, with the same buttons.
+4. A panel titled "Move to «_дубли»" sits to the right of the results and shows how many files will go into that folder and how many stay in place. In a narrow browser window the panel sits at the bottom of the screen instead. Click the button with the number of files on it, for example "Move 12 files", then "Yes, move".
+5. The panel then shows "✓ Moved 12 files" with their total size, and the moved photos leave the list on the page. The files marked "Remove" are now in a `_дубли` folder inside the folder you checked, keeping the same subfolders. "Open the «_дубли» folder" opens it in Finder or File Explorer.
 
-If you change your mind, click "Put them back" on the same panel.
+If you change your mind, click "Put back" on the same panel.
 
 The program can mistake a different photo for a copy. If you later want to delete the `_дубли` folder yourself, look through it first.
 
 Photos kept in the Apple Photos app live inside its library, which the program does not touch. To check them, export them from Photos into an ordinary folder first.
+
+## Update
+
+In the top right corner, next to RU | EN, click the version number, for example "1.2", then click "Check for updates" in the small panel that opens. If a newer version is out, an "Open the download page" link appears; it opens this page on GitHub. Download the new version from the table above and install it the same way as the first one. On a Mac, drag it onto Applications and agree to replace the old one. On Windows, shut the program down and replace the old DuplicatePhotoFinder folder with the new one. Your marks, history and moves stay: they live in the data folder, apart from the program.
 
 ## Quit
 
